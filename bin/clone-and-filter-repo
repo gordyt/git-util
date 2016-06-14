@@ -1,0 +1,279 @@
+#!/bin/bash
+#    File: clone-and-filter-repo
+# Purpose: See usage below
+# Version: 001-20160525 - initial release
+
+VERSION='001-20160525'
+SRC_REPO=''
+FILTER_DIR=''
+DEST_REPO_PATH=''
+declare -a INCLUDE_PATHS
+declare -a RM_PATHS
+READ_IP_FROM_STDIN=0
+
+
+function log {
+    msg="[`date`] $1"
+    >&2 echo "$msg"
+}
+
+function prep_new_repo {
+    log "cloning from '$SRC_REPO' to '$DEST_REPO_PATH'"
+    git clone $SRC_REPO $DEST_REPO_PATH
+    pushd $DEST_REPO_PATH
+    log "fetching all branches from '$SRC_REPO' to '$DEST_REPO_PATH'"
+    git checkout --detach
+    git branch | grep --invert-match "*" | xargs git branch -D
+    for b in $(git branch --remotes --no-color | grep --invert-match '\->')
+    do 
+        log "checkout out branch '$b'"
+        git checkout -f --track "$b"
+    done
+    git remote remove origin
+    popd
+}
+
+
+function apply_subdirectory_filter {
+    log "removing everything from '$DEST_REPO_PATH' except '$FILTER_DIR'"
+    pushd $DEST_REPO_PATH
+    git filter-branch --prune-empty \
+      --subdirectory-filter $FILTER_DIR \
+      -- --all
+    log "removing backup refs"
+    rm -rf .git/refs/original/*
+    popd
+}
+
+function apply_tree_filter {
+    log "removing the following from '$DEST_REPO_PATH'"
+    pushd $DEST_REPO_PATH
+    for rp in "${RM_PATHS[@]}"
+    do
+        log "-- $rp"
+    done
+    git filter-branch --tree-filter \
+        "rm -rf ${RM_PATHS[*]}" \
+        -- --all
+    popd
+}
+
+# Return T if PATH is a child of INCLUDE_PATHS or if
+# PATH is fully contained w/in INCLUDE_PATHS
+function is_path_covered_by_include {
+    p="$1"
+    pg="${p}*"
+    for tp in "${INCLUDE_PATHS[@]}"
+    do
+        tpg="${tp}*"
+        if [[ $p == $tpg ]]
+        then
+            echo "T"
+            return
+        fi
+        if [[ $tp == $pg ]]
+        then
+            echo "T"
+            return
+        fi
+    done
+    echo "F"
+}
+
+function does_path_start_with_removes {
+    p="$1"
+    for rp in "${RM_PATHS[@]}"
+    do
+        rpg="${rp}*"
+        if [[ $p == $rpg ]]
+        then
+            echo "T"
+            return
+        fi
+    done
+    echo "F"
+}
+
+# Generate the initial list of stuff to potentially delete. Be sure and
+# ignore the "./.git" subdirectory.
+# Then process the result and remote the following from that initial list.
+#   .
+#   Any path that is wholly contained on one of the INCLUDE_PATHS
+#   Any path that that starts with one of the paths already marked for deletion
+# This function populates the RM_PATHS array
+function generate_tree_filter {
+    log "generating tree-filter"
+    pushd $DEST_REPO_PATH
+    for p in $(find . -path ./.git -prune -o -print)
+    do
+        if [ "$p" = "." ]
+        then
+            continue
+        fi
+        rc=$(is_path_covered_by_include "$p")
+        if [ "$rc" = "T" ]
+        then
+            continue
+        fi
+        rc=$(does_path_start_with_removes "$p")
+        if [ "$rc" = "T" ]
+        then
+            continue
+        fi
+        RM_PATHS+=("$p")
+    done
+    popd
+}
+
+function reclaim_repo_space {
+    log "Reclaiming space in '$DEST_REPO_PATH'"
+    pushd $DEST_REPO_PATH
+    s0=$(du -sh . | awk '{print $1}')
+    log "Size of repo before cleanup: $s0"
+    rm -rf .git/refs/original/*
+    git reflog expire --expire=now --all
+    git gc --aggressive --prune=now
+    s1=$(du -sh . | awk '{print $1}')
+    log "Size of repo after cleanup: $s1"
+    popd
+}
+
+
+function usage {
+cat << EOF 
+$0, Version $VERSION
+
+This script performs the following actions:
+
+1. Clones a working copy of the specified SRC-REPO
+   into DEST-REPO-PATH.
+2. Recreates all the remote branches locally
+3. Filters out everything except the single specified
+   top-level FILTER-DIR. When this step is complete
+   then the immediate children of FILTER-DIR
+   be at the top-level of the new repository
+4. Filters out any remaining paths not included in
+   INCLUDE_PATHS from the result (see below).
+
+Arguments:
+
+  -s SRC-REPO 
+  -f FILTER-DIR 
+  -d DEST-REPO-PATH
+  -h | --help print help and exit
+
+  Any additional values passed in on the command line 
+  will be used to populate INCLUDE_PATHS.  If the
+  special value '--' is passed in, then INCLUDE_PATHS
+  will be read from STDIN.
+
+
+Read INCLUDE_PATHS from stdin:
+
+- one path per line.  
+- each path should start with a top-level child of
+  FILTER-DIR and should start with "./".  No trailing
+  slashes on directory paths.
+- Only those paths read from stdin will be included in
+  the final results.
+
+Example:
+
+The zm-versioncheck-store repo is based off the top-level
+ZimbraAdminVersionCheck directory and should have
+the following paths remaining in the output repo.  
+
+Notice that each path starts with "./" and directory
+names have no trailing slashes.  These are the
+"include paths."
+
+    ./src/java
+    ./src/testdata
+    ./build.xml
+    ./conf/MANIFEST.MF
+
+With INCLUDE_PATHS specified in the file "zm-versioncheck-store.paths".
+And with a copy of the "zcs-full" repo checked out locally (with all
+branches included):
+
+cat zm-versioncheck-store.paths | ./clone-and-filter-repo -s zcs-full -d zm-versioncheck-store -f ZimbraAdminVersionCheck --
+
+EOF
+    exit 1
+}
+
+function check_args {
+    for ra in SRC_REPO FILTER_DIR DEST_REPO_PATH
+    do
+        if [ -z "${!ra}" ]
+        then
+            log "Error: '$ra' is a required argument"
+            log "For help run '$0 --help'"
+            exit 1
+        fi
+    done
+    if [ ${#INCLUDE_PATHS[@]} -eq 0 ]
+    then
+        log "Error: you must specify one or more INCLUDE_PATHS"
+        log "For help run '$0 --help'"
+        exit 1
+    fi
+}
+
+while [[ $# > 0 ]]
+do
+    case $1 in
+        -s)
+        SRC_REPO="$2"
+        shift
+        ;;
+        -f)
+        FILTER_DIR="$2"
+        shift
+        ;;
+        -d)
+        DEST_REPO_PATH="$2"
+        shift
+        ;;
+        -h|--help)
+        usage
+        ;;
+        *)
+        if [ "$1" == "--" ]
+        then
+            READ_IP_FROM_STDIN=1
+        else
+            INCLUDE_PATHS+=("$1")
+        fi
+        ;;
+    esac
+    shift
+done
+
+if [ $READ_IP_FROM_STDIN -eq 1 ]
+then
+    while read -r line
+    do
+        INCLUDE_PATHS+=("$line")
+    done
+fi
+
+
+check_args
+
+log "These are the parameters that I parsed:"
+log "- SRC_REPO='$SRC_REPO'"
+log "- FILTER_DIR='$FILTER_DIR'"
+log "- DEST_REPO_PATH='$DEST_REPO_PATH'"
+log "- INCLUDE_PATHS:"
+for ip in "${INCLUDE_PATHS[@]}"
+do
+    log "-- $ip"
+done
+
+prep_new_repo
+apply_subdirectory_filter
+generate_tree_filter
+apply_tree_filter
+reclaim_repo_space
+
