@@ -19,6 +19,8 @@ with `-h` or `--help` option for instructions.
 
 ## docs
 
+- [creating-stash-repo](docs/creating-stash-repo.md) - instructions for
+  creating a new repository in stash.
 - [stash-repos](docs/stash-repos.md) - the list of master repositories
   in stash from which all of the component-focused repositories are
   based.
