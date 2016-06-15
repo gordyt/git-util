@@ -10,6 +10,8 @@ DEST_REPO_PATH=''
 declare -a INCLUDE_PATHS
 declare -a RM_PATHS
 READ_IP_FROM_STDIN=0
+REPROCESS=0
+TARGET_BRANCH=''
 
 
 function log {
@@ -104,6 +106,11 @@ function does_path_start_with_removes {
 function generate_tree_filter {
     log "generating tree-filter"
     pushd $DEST_REPO_PATH
+	if [ "z${TARGET_BRANCH}" != "z" ]
+	then
+		log "checkout out target branch '$TARGET_BRANCH' before computing deletes"
+		git checkout $TARGET_BRANCH
+	fi
     for p in $(find . -path ./.git -prune -o -print)
     do
         if [ "$p" = "." ]
@@ -160,12 +167,27 @@ Arguments:
   -s SRC-REPO 
   -f FILTER-DIR 
   -d DEST-REPO-PATH
+  -b TARGET-BRANCH (optional)
+  -r | --reprocess (no args, optional)
   -h | --help print help and exit
 
   Any additional values passed in on the command line 
   will be used to populate INCLUDE_PATHS.  If the
   special value '--' is passed in, then INCLUDE_PATHS
   will be read from STDIN.
+
+  If "-b TARGET-BRANCH" is specified, then that branch will
+  be checked out in the new repo BEFORE calculating the list
+  of files and directories that should be filtered out.
+
+  The -r (--reprocess) arg may be used *after* the new output
+  repository has been created.  The effect of doing this is just
+  to recalculate the paths that should be removed from the output
+  and rerun that step.  This may be necessary in the event that
+  extra files or directories are left in the output repo.
+
+  Basically just rerun the exact same command with the same args,
+  just add "-r" or "--reprocess".
 
 
 Read INCLUDE_PATHS from stdin:
@@ -235,6 +257,13 @@ do
         DEST_REPO_PATH="$2"
         shift
         ;;
+        -b)
+        TARGET_BRANCH="$2"
+        shift
+        ;;
+        -r|--reprocess)
+        REPROCESS=1
+        ;;
         -h|--help)
         usage
         ;;
@@ -258,7 +287,6 @@ then
     done
 fi
 
-
 check_args
 
 log "These are the parameters that I parsed:"
@@ -271,8 +299,12 @@ do
     log "-- $ip"
 done
 
-prep_new_repo
-apply_subdirectory_filter
+if [ $REPROCESS -eq 0 ]
+then
+	prep_new_repo
+	apply_subdirectory_filter
+fi
+
 generate_tree_filter
 apply_tree_filter
 reclaim_repo_space
