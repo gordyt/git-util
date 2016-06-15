@@ -11,28 +11,11 @@ declare -a INCLUDE_PATHS
 declare -a RM_PATHS
 READ_IP_FROM_STDIN=0
 REPROCESS=0
-TARGET_BRANCH=''
 
 
 function log {
     msg="[`date`] $1"
     >&2 echo "$msg"
-}
-
-function prep_new_repo {
-    log "cloning from '$SRC_REPO' to '$DEST_REPO_PATH'"
-    git clone $SRC_REPO $DEST_REPO_PATH
-    pushd $DEST_REPO_PATH
-    log "fetching all branches from '$SRC_REPO' to '$DEST_REPO_PATH'"
-    git checkout --detach
-    git branch | grep --invert-match "*" | xargs git branch -D
-    for b in $(git branch --remotes --no-color | grep --invert-match '\->')
-    do 
-        log "checkout out branch '$b'"
-        git checkout -f --track "$b"
-    done
-    git remote remove origin
-    popd
 }
 
 
@@ -103,34 +86,53 @@ function does_path_start_with_removes {
 #   Any path that is wholly contained on one of the INCLUDE_PATHS
 #   Any path that that starts with one of the paths already marked for deletion
 # This function populates the RM_PATHS array
+# It checks every branch and to check for deletes
 function generate_tree_filter {
-    log "generating tree-filter"
     pushd $DEST_REPO_PATH
-	if [ "z${TARGET_BRANCH}" != "z" ]
-	then
-		log "checkout out target branch '$TARGET_BRANCH' before computing deletes"
-		git checkout $TARGET_BRANCH
-	fi
-    for p in $(find . -path ./.git -prune -o -print)
-    do
-        if [ "$p" = "." ]
-        then
-            continue
-        fi
-        rc=$(is_path_covered_by_include "$p")
-        if [ "$rc" = "T" ]
-        then
-            continue
-        fi
-        rc=$(does_path_start_with_removes "$p")
-        if [ "$rc" = "T" ]
-        then
-            continue
-        fi
-        RM_PATHS+=("$p")
+    for b in $(git branch)
+    do 
+        log "generate_tree_filter: computing deletes for branch '$b'"
+        git checkout -f "$b"
+
+        for p in $(find . -path ./.git -prune -o -print)
+        do
+            if [ "$p" = "." ]
+            then
+                continue
+            fi
+            rc=$(is_path_covered_by_include "$p")
+            if [ "$rc" = "T" ]
+            then
+                continue
+            fi
+            rc=$(does_path_start_with_removes "$p")
+            if [ "$rc" = "T" ]
+            then
+                continue
+            fi
+            RM_PATHS+=("$p")
+        done
     done
     popd
 }
+
+function prep_new_repo {
+    log "cloning from '$SRC_REPO' to '$DEST_REPO_PATH'"
+    git clone $SRC_REPO $DEST_REPO_PATH
+    pushd $DEST_REPO_PATH
+    log "fetching all branches from '$SRC_REPO' to '$DEST_REPO_PATH'"
+    git checkout --detach
+    git branch | grep --invert-match "*" | xargs git branch -D
+    for b in $(git branch --remotes --no-color | grep --invert-match '\->')
+    do 
+        log "checkout out branch '$b'"
+        git checkout -f --track "$b"
+    done
+    git remote remove origin
+    popd
+}
+
+
 
 function reclaim_repo_space {
     log "Reclaiming space in '$DEST_REPO_PATH'"
@@ -167,7 +169,6 @@ Arguments:
   -s SRC-REPO 
   -f FILTER-DIR 
   -d DEST-REPO-PATH
-  -b TARGET-BRANCH (optional)
   -r | --reprocess (no args, optional)
   -h | --help print help and exit
 
@@ -175,10 +176,6 @@ Arguments:
   will be used to populate INCLUDE_PATHS.  If the
   special value '--' is passed in, then INCLUDE_PATHS
   will be read from STDIN.
-
-  If "-b TARGET-BRANCH" is specified, then that branch will
-  be checked out in the new repo BEFORE calculating the list
-  of files and directories that should be filtered out.
 
   The -r (--reprocess) arg may be used *after* the new output
   repository has been created.  The effect of doing this is just
@@ -255,10 +252,6 @@ do
         ;;
         -d)
         DEST_REPO_PATH="$2"
-        shift
-        ;;
-        -b)
-        TARGET_BRANCH="$2"
         shift
         ;;
         -r|--reprocess)
