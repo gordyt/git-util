@@ -31,7 +31,13 @@ function apply_subdirectory_filter {
 }
 
 function apply_tree_filter {
-    log "removing the following from '$DEST_REPO_PATH'"
+	if [ ${#RM_PATHS[@]} -eq 0 ]
+	then
+		log "No paths to remove were computed.  Tree-filter operation will not be performed."
+		return
+	else
+		log "removing the following from '$DEST_REPO_PATH'"
+	fi
     pushd $DEST_REPO_PATH
     for rp in "${RM_PATHS[@]}"
     do
@@ -123,10 +129,10 @@ function prep_new_repo {
     log "fetching all branches from '$SRC_REPO' to '$DEST_REPO_PATH'"
     git checkout --detach
     git branch | grep --invert-match "*" | xargs git branch -D
-    for b in $(git branch --remotes --no-color | grep --invert-match '\->')
+    for rb in $(git branch --remotes --no-color | grep --invert-match '\->')
     do 
-        log "checkout out branch '$b'"
-        git checkout -f --track "$b"
+        log "checkout out branch '$rb'"
+        git checkout -f --track "$rb"
     done
     git remote remove origin
     popd
@@ -286,6 +292,7 @@ log "These are the parameters that I parsed:"
 log "- SRC_REPO='$SRC_REPO'"
 log "- FILTER_DIR='$FILTER_DIR'"
 log "- DEST_REPO_PATH='$DEST_REPO_PATH'"
+log "- REPROCESS='$REPROCESS'"
 log "- INCLUDE_PATHS:"
 for ip in "${INCLUDE_PATHS[@]}"
 do
