@@ -6,13 +6,25 @@ The purpose of this repository is to provide information and tools for working w
 
 [clone-and-filter-repo](bin/clone-and-filter-repo)
 
-This is a bash script that automates most of the steps required to create a new component-focused repository that is based off of a top-level directory in one of the following "master" repositories:
+This has been rewritten in Python for better performance and also to make it more flexible.  It can now handle creating a new component-focused repository that is based off of one *or more* top-level directories, typically based off one of the following:
 
 - `zcs-full`
 - `zd-full`
 - `zqa-full`
 
-This script maintains full history, including branch labels. Run the script with `-h` or `--help` option for instructions.
+This script maintains full history, including branch labels. Run the script with `-h` or `--help` option for instructions.  There are probably three typical patterns where this script can help.  These are listed in order from fastest to slowest execution time.
+
+1. You just need to extract one subtree out of the source repo, with full history. You would use the following arguments: -s SRC-REPO -d DEST-REP -f FILTER-DIR
+2. You want to extract one subtree out of the source repo, and then further filter out parts of that subtree that are not required.  You would use the following arguments: -s SRC-REPO -d DEST-REP -f FILTER-DIR -i INCLUDE-PATHS-FILE
+3. You want to extract multiple subtrees out of the source repo, and further filter out parts of the subtree that are not required. You would use the following arguments: -s SRC-REPO -d DEST-REP -f INCLUDE-PATHS-FILE
+
+The crucial difference to keep in mind between action #2 and action #3 is the format of the *INCLUDE-PATHS-FILE*.  The process of extracting a subtree first (as in action #2) promotes all of the children of *FILTER-DIR* to the top-level of *DEST-REPO*.  But in action #3, because we do not first apply a subtree filter (you can only do that with one subtree), then the new contents of *DEST-REPO* maintain their full hierarchy.
+
+Examples will follow.
+
+
+
+
 
 ## docs
 

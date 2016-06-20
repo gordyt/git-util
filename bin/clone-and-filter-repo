@@ -38,9 +38,10 @@ def get_cwd_size():
 
 def check_args(args):
     global INCLUDE_PATHS
-    if not args.skip_tree_filter and not args.include_paths_file:
-        logging.warn("--include-paths-file required unless --skip-tree-filter")
-        sys.exit(1)
+    if not args.include_paths_file:
+        logging.warn("No --include-paths-file so tree-filter will be applied")
+    if not args.filter_dir:
+        logging.warn("No --filter-dir so subdirectory-filter will not be applied")
     if args.include_paths_file and os.path.isfile(args.include_paths_file):
         INCLUDE_PATHS = filter(
             lambda p: p,
@@ -49,7 +50,7 @@ def check_args(args):
                 file(args.include_paths_file).read().split('\n')
             )
         )
-    if not args.skip_tree_filter and not INCLUDE_PATHS:
+    if args.include_paths_file and not INCLUDE_PATHS:
         logging.warn("Invalid or empty --include-paths-file")
         sys.exit(1)
     if args.reprocess and not os.path.isdir(args.dest_repo):
@@ -239,12 +240,18 @@ def main():
     )
     parser.add_argument(
         '-f', '--filter-dir',
-        required=True,
-        help='The top-level directory from the source repo to use'
+        required=False,
+        help=(
+            'The top-level directory from the source repo to use. ' +
+            'If not included then no subdirectory filter will be applied.'
+        )
     )
     parser.add_argument(
         '-i', '--include-paths-file',
-        help='The file that contains a list of paths to include'
+        help=(
+            'The file that contains a list of paths to include. ' +
+            'If not included then no tree filter will be applied.'
+        )
     )
     parser.add_argument(
         '-b', '--base-branch',
@@ -262,20 +269,15 @@ def main():
         default=False,
         help='If included, automatically answer yes to all yes/no questions'
     )
-    parser.add_argument(
-        '--skip-tree-filter',
-        action='store_true',
-        default=False,
-        help='If included, do not apply the tree filter to the DEST-REPO'
-    )
 
     args = parser.parse_args()
     configure_logging(args)
     check_args(args)
     if not args.reprocess:
         prep_new_repo(args)
-        apply_subdirectory_filter(args)
-    if not args.skip_tree_filter:
+        if args.filter_dir:
+            apply_subdirectory_filter(args)
+    if INCLUDE_PATHS:
         generate_tree_filter(args)
         apply_tree_filter(args)
     reclaim_repo_space(args)
