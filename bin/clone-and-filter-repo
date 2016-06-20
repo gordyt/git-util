@@ -1,392 +1,285 @@
-#!/bin/bash
-#    File: clone-and-filter-repo
-# Purpose: See usage below
-# Version: 001-20160525 - initial release
+#!/usr/bin/env python
+import bisect
+import contextlib
+import logging
+import os
+import subprocess
+import sys
 
-VERSION='001-20160525'
-SRC_REPO=''
-FILTER_DIR=''
-DEST_REPO_PATH=''
-INCLUDE_PATHS_FILE=''
-declare -a INCLUDE_PATHS
-declare -a RM_PATHS
-declare -a RM_PATHS_QUOTED
-READ_IP_FROM_STDIN=0
-REPROCESS=0
-SKIP_TREE_FILTER=0
-BASE_BRANCH=''
+VERSION = "0.1"
+INCLUDE_PATHS = None
+RM_PATHS = None
+DEVNULL = open(os.devnull, 'w')
 
 
-function log {
-    msg="[`date`] $1"
-    >&2 echo "$msg"
-}
-
-function askYN {
-    msg=$1
-	RESPONSE='x'
-
-	until $(echo $RESPONSE | grep -q -E '[yYnN]')
-	do
-		read -p "$msg [y|n]: " RESPONSE
-	done
-	
-	if [ "$RESPONSE" = "y" -o "$RESPONSE" = "Y" ]
-	then
-		echo "1"
-	else
-		echo "0"
-	fi
-}
-
-function apply_subdirectory_filter {
-    log "removing everything from '$DEST_REPO_PATH' except '$FILTER_DIR'"
-    pushd $DEST_REPO_PATH
-    git filter-branch --prune-empty \
-      --subdirectory-filter $FILTER_DIR \
-      -- --all
-    log "removing backup refs"
-    rm -rf .git/refs/original/*
-    popd
-}
-
-function apply_tree_filter {
-	if [ ${#RM_PATHS[@]} -eq 0 ]
-	then
-		log "No paths to remove were computed.  Tree-filter operation will not be performed."
-		return
-	else
-		log "removing the following from '$DEST_REPO_PATH'"
-	fi
-    for rp in "${RM_PATHS[@]}"
-    do
-        log "-- $rp"
-    done
-
-	ans=$(askYN "Do you wish to continue?")
-	if [ "$ans" = "1" ]
-	then
-		log "Performing filter operation"
-		pushd $DEST_REPO_PATH
-		git filter-branch --index-filter \
-			"git rm -r -q --cached --ignore-unmatch ${RM_PATHS[*]}" \
-			--prune-empty -- --all
-		# git filter-branch --tree-filter \
-		#     "rm -rf ${RM_PATHS[*]}" \
-		#     -- --all
-		popd
-	else
-		log "Skipping filter operation"
-	fi
-}
-
-# Return T if PATH is a child of INCLUDE_PATHS or if
-# PATH is fully contained w/in INCLUDE_PATHS
-function is_path_covered_by_include {
-    p="$1"
-    pg="${p}*"
-    for tp in "${INCLUDE_PATHS[@]}"
-    do
-        tpg="${tp}*"
-        if [[ $p == $tpg ]]
-        then
-            echo "T"
-            return
-        fi
-        if [[ $tp == $pg ]]
-        then
-            echo "T"
-            return
-        fi
-    done
-    echo "F"
-}
-
-function does_path_start_with_removes {
-    p="$1"
-    for rp in "${RM_PATHS[@]}"
-    do
-        rpg="${rp}*"
-        if [[ $p == $rpg ]]
-        then
-            echo "T"
-            return
-        fi
-    done
-    echo "F"
-}
-
-# Generate the initial list of stuff to potentially delete. Be sure and
-# ignore the "./.git" subdirectory.
-# Then process the result and remote the following from that initial list.
-#   .
-#   Any path that is wholly contained on one of the INCLUDE_PATHS
-#   Any path that that starts with one of the paths already marked for deletion
-# This function populates the RM_PATHS array
-# It checks every branch and to check for deletes unless BASE_BRANCH is specified
-function generate_tree_filter {
-    pushd $DEST_REPO_PATH
-	if [ -z "$BASE_BRANCH" ]
-	then
-		branches=$(git branch)
-	else
-		branches="$BASE_BRANCH"
-	fi
-
-    for b in $branches
-    do 
-        log "generate_tree_filter: computing deletes for branch '$b'"
-        git checkout -q -f "$b"
-
-        for p in $(find . -path ./.git -prune -o -print)
-        do
-            if [ "$p" = "." ]
-            then
-                continue
-            fi
-            rc=$(is_path_covered_by_include "$p")
-            if [ "$rc" = "T" ]
-            then
-                continue
-            fi
-            rc=$(does_path_start_with_removes "$p")
-            if [ "$rc" = "T" ]
-            then
-                continue
-            fi
-			RM_PATHS[${#RM_PATHS[*]}]="$p"
-        done
-    done
-    popd
-}
-
-function prep_new_repo {
-    log "cloning from '$SRC_REPO' to '$DEST_REPO_PATH'"
-    git clone $SRC_REPO $DEST_REPO_PATH
-    pushd $DEST_REPO_PATH
-    log "fetching all branches from '$SRC_REPO' to '$DEST_REPO_PATH'"
-    git checkout --detach
-    git branch | grep --invert-match "*" | xargs git branch -D
-    for rb in $(git branch --remotes --no-color | grep --invert-match '\->')
-    do 
-        log "checkout out branch '$rb'"
-        git checkout -f --track "$rb"
-    done
-    git remote remove origin
-    popd
-}
+@contextlib.contextmanager
+def in_directory(directory):
+    save_dir = os.getcwd()
+    os.chdir(directory)
+    try:
+        yield
+    finally:
+        os.chdir(save_dir)
 
 
-
-function reclaim_repo_space {
-    log "Reclaiming space in '$DEST_REPO_PATH'"
-    pushd $DEST_REPO_PATH
-    s0=$(du -sh . | awk '{print $1}')
-    log "Size of repo before cleanup: $s0"
-    rm -rf .git/refs/original/*
-    git reflog expire --expire=now --all
-    git gc --aggressive --prune=now
-    s1=$(du -sh . | awk '{print $1}')
-    log "Size of repo after cleanup: $s1"
-    popd
-}
+def askYN(prompt):
+    ans = ''
+    question = "%s [y|n]: " % prompt
+    while len(ans) == 0 or not ans in "nNyY":
+        ans = raw_input(question)
+    if ans in 'yY':
+        return True
+    return False
 
 
-function usage {
-cat << EOF 
-$0, Version $VERSION
-
-This script performs the following actions:
-
-1. Clones a working copy of the specified SRC-REPO
-   into DEST-REPO-PATH.
-2. Recreates all the remote branches locally
-3. Filters out everything except the single specified
-   top-level FILTER-DIR. When this step is complete
-   then the immediate children of FILTER-DIR
-   be at the top-level of the new repository
-4. Filters out any remaining paths not included in
-   INCLUDE_PATHS from the result (see below).
-
-Arguments:
-
-  -s SRC-REPO 
-  -f FILTER-DIR 
-  -d DEST-REPO-PATH
-  -i INCLUDE_PATHS_FILE
-  -b | --base-branch  BASE_BRANCH
-  -r | --reprocess (no args, optional)
-  --skip-tree-filter (no args, optional)
-  -h | --help print help and exit
+def get_cwd_size():
+    return subprocess.check_output(['du', '-s', '-h', '.']).split('\n')[0].strip(" \t.")
 
 
-  The -r (--reprocess) arg may be used *after* the new output
-  repository has been created.  The effect of doing this is just
-  to recalculate the paths that should be removed from the output
-  and rerun that step.  This may be necessary in the event that
-  extra files or directories are left in the output repo.
-
-  Basically just rerun the exact same command with the same args,
-  just add "-r" or "--reprocess".
-
-  The --skip-tree-filter arg may be used if you want to preserve
-  all of the contents of the FILTER-DIR.
-
-  The -b (--base-branch) may be used if you wish to compute the
-  paths to delete solely on the state of the BASE_BRANCH that
-  you specify, instead of having the script iterate through every
-  branch and do the computation.
-
-The INCLUDE_PATHS_FILE should conform to the following:
-
-
-- one path per line.  
-- each path should start with a top-level child of
-  FILTER-DIR and should start with "./".  No trailing
-  slashes or '*' any paths.
-
-Example:
-
-The zm-versioncheck-store repo is based off the top-level
-ZimbraAdminVersionCheck directory and should have
-the following paths remaining in the output repo.  
-
-Notice that each path starts with "./" and directory
-names have no trailing slashes.  These are the
-"include paths."
-
-    ./src/java
-    ./src/testdata
-    ./build.xml
-    ./conf/MANIFEST.MF
-
-With INCLUDE_PATHS specified in the file "zm-versioncheck-store.paths".
-And with a copy of the "zcs-full" repo checked out locally (with all
-branches included):
-
-./clone-and-filter-repo -s zcs-full -d zm-versioncheck-store -f ZimbraAdminVersionCheck \
-  -i zm-versioncheck-store.paths
-
-EOF
-    exit 1
-}
-
-function check_args {
-    for ra in SRC_REPO FILTER_DIR DEST_REPO_PATH INCLUDE_PATHS_FILE
-    do
-        if [ -z "${!ra}" ]
-        then
-            log "Error: '$ra' is a required argument"
-            log "For help run '$0 --help'"
-            exit 1
-        fi
-    done
-	if [ ! -f ${INCLUDE_PATHS_FILE} ]
-	then
-		log "Error: must specify valid INCLUDE_PATHS_FILE (-i option)"
-		exit 1
-	fi
-    if [ ${SKIP_TREE_FILTER} -eq 0 -a  ${#INCLUDE_PATHS[@]} -eq 0 ]
-    then
-        log "Error: you must specify one or more INCLUDE_PATHS"
-        log "For help run '$0 --help'"
-        exit 1
-    fi
-	if [ ${REPROCESS} -eq 0 -a -d "${DEST_REPO_PATH}" ]
-	then
-		log "Error: the destination '${DEST_REPO_PATH}' already exists.  Did you mean to reprocess?"
-		exit 1
-	fi
-	if [ ${REPROCESS} -eq 1 -a ! -d "${DEST_REPO_PATH}" ]
-	then
-		log "Error: you asked to reprocess the output, but '${DEST_REPO_PATH}' does not exist"
-		exit 1
-	fi
-}
-
-while [[ $# > 0 ]]
-do
-    case $1 in
-        -s)
-        SRC_REPO="$2"
-        shift
-        ;;
-        -f)
-        FILTER_DIR="$2"
-        shift
-        ;;
-        -i)
-        INCLUDE_PATHS_FILE="$2"
-        shift
-        ;;
-        -d)
-        DEST_REPO_PATH="$2"
-        shift
-        ;;
-        -b|--base-branch)
-		BASE_BRANCH="$2"
-        shift
-        ;;
-        -r|--reprocess)
-        REPROCESS=1
-        ;;
-        --skip-tree-filter)
-        SKIP_TREE_FILTER==1
-        ;;
-        -h|--help)
-        usage
-        ;;
-        *)
-		usage
-        ;;
-    esac
-    shift
-done
+def check_args(args):
+    global INCLUDE_PATHS
+    if not args.skip_tree_filter and not args.include_paths_file:
+        logging.warn("--include-paths-file required unless --skip-tree-filter")
+        sys.exit(1)
+    if args.include_paths_file and os.path.isfile(args.include_paths_file):
+        INCLUDE_PATHS = filter(
+            lambda p: p,
+            map(
+                lambda p: p.strip(),
+                file(args.include_paths_file).read().split('\n')
+            )
+        )
+    if not args.skip_tree_filter and not INCLUDE_PATHS:
+        logging.warn("Invalid or empty --include-paths-file")
+        sys.exit(1)
+    if args.reprocess and not os.path.isdir(args.dest_repo):
+        logging.warn(
+            "You asked to reprocess the output, but --dest-repo '%s' does not exist",
+            args.dest_repo
+        )
+        sys.exit(1)
+    if not args.reprocess and os.path.exists(args.dest_repo):
+        logging.warn(
+            "You did not ask to reprocess the output, but --dest-rep '%s' already exists",
+            args.dest_repo
+        )
+        sys.exit(1)
 
 
-if [ -f $INCLUDE_PATHS_FILE ]
-then
-	while IFS= read -r line; do
-		INCLUDE_PATHS[${#INCLUDE_PATHS[*]}]="$line"
-    done < $INCLUDE_PATHS_FILE
-fi
-
-check_args
+def configure_logging(args):
+    logging.basicConfig(
+        format='[%(asctime)s][%(levelname)s] %(message)s',
+        level=logging.INFO
+    )
 
 
-log "These are the parameters that I parsed:"
-log "- SRC_REPO='$SRC_REPO'"
-log "- FILTER_DIR='$FILTER_DIR'"
-log "- DEST_REPO_PATH='$DEST_REPO_PATH'"
-log "- BASE_BRANCH='$BASE_BRANCH'"
-log "- REPROCESS='$REPROCESS'"
-log "- SKIP_TREE_FILTER='$SKIP_TREE_FILTER'"
-log "- INCLUDE_PATHS_FILE='$INCLUDE_PATHS_FILE'"
-log "- INCLUDE_PATHS:"
-for ip in "${INCLUDE_PATHS[@]}"
-do
-    log "-- $ip"
-done
+def prep_new_repo(args):
+    logging.info(
+        "cloning from '%s' to '%s'",
+        args.source_repo,
+        args.dest_repo
+    )
+    subprocess.call(
+        ['git', 'clone', args.source_repo, args.dest_repo],
+        stderr=DEVNULL
+    )
+    with in_directory(args.dest_repo):
+        subprocess.call('git checkout --detach'.split(), stderr=DEVNULL)
+        for b in subprocess.check_output("git branch".split()).split('\n'):
+            bs = b.strip()
+            if bs and not bs.startswith('*'):
+                subprocess.call(
+                    ['git', 'branch', '-D', bs],
+                    stdout=DEVNULL
+                )
+        for rb in subprocess.check_output(
+            'git branch --remotes --no-color'.split(),
+            stderr=DEVNULL
+        ).split('\n'):
+            rb = rb.strip()
+            if rb and not '->' in rb:
+                logging.info("checking out branch '%s'", rb)
+                subprocess.call(
+                    ['git', 'checkout', '-f', '--track', rb],
+                    stdout=DEVNULL,
+                    stderr=DEVNULL
+                )
+        subprocess.call(['git', 'remote', 'remove', 'origin'])
 
-ans=$(askYN "continue?")
-if [ "$ans" = "0" ]
-then
-	exit 0
-fi
 
-if [ $REPROCESS -eq 0 ]
-then
-	prep_new_repo
-	apply_subdirectory_filter
-fi
+def is_included_path(p):
+    global INCLUDE_PATHS
+    for ip in INCLUDE_PATHS:
+        if p.startswith(ip) or ip.startswith(p):
+            return True
+    return False
 
-if [ $SKIP_TREE_FILTER -eq 0 ]
-then
-	generate_tree_filter
-	apply_tree_filter
-else
-	log "Skipping tree filter operations"
-fi
 
-reclaim_repo_space
+def is_path_removed(p):
+    global RM_PATHS
+    rmlen = len(RM_PATHS)
+    i1 = bisect.bisect_left(RM_PATHS, p)
+    p1 = RM_PATHS[i1] if i1 < rmlen else None
+    if p1 and p.startswith(p1):
+        return True
+    i2 = i1 - 1
+    p2 = RM_PATHS[i2] if i2 >= 0 and i2 < rmlen else None
+    if p2 and p.startswith(p2):
+        return True
+    return False
 
+
+def apply_subdirectory_filter(args):
+    logging.info("applying subdirectory filter for '%s' (CAN TAKE A LONG TIME!)", args.filter_dir)
+    with in_directory(args.dest_repo):
+        subprocess.call(
+            [
+                'git',
+                'filter-branch',
+                '--prune-empty',
+                '--subdirectory-filter',
+                args.filter_dir,
+                '--',
+                '--all'
+            ],
+            stderr=DEVNULL
+        )
+        orefs = '.git/refs/original'
+        if os.path.isdir(orefs):
+            logging.info("removing backup refs")
+            subprocess.call(['rm', '-r', '-f', orefs])
+
+
+def generate_tree_filter(args):
+    global RM_PATHS
+    RM_PATHS = []
+    with in_directory(args.dest_repo):
+        if args.base_branch:
+            branches = [args.base_branch]
+        else:
+            branches = filter(
+                lambda b: b,
+                map(
+                    lambda b: b.strip('* '),
+                    subprocess.check_output(
+                        ['git', 'branch'],
+                        stderr=DEVNULL).split('\n')
+                )
+            )
+        for b in branches:
+            logging.info("computing deletes for branch '%s'", b)
+            subprocess.call(
+                ['git', 'checkout', '-q', '-f', b],
+                stderr=DEVNULL
+            )
+            for p in filter(
+                lambda p: p and p != '.',
+                map(
+                    lambda p: p.strip(),
+                    subprocess.check_output(
+                        ['find', '.', '-path', './.git', '-prune', '-o', '-print']
+                    ).split('\n')
+                )
+            ):
+                if (not is_included_path(p)) and (not is_path_removed(p)):
+                    bisect.insort(RM_PATHS, p)
+
+
+def apply_tree_filter(args):
+    global RM_PATHS
+    if not RM_PATHS:
+        logging.info("No remove paths computed.  Skipping tree-filter")
+        return
+    logging.info("Removing the following paths from all branches:")
+    for rp in RM_PATHS:
+        logging.info("> %s", rp)
+    rmp_quoted = " ".join(map(
+        lambda p: '"%s"' % p,
+        RM_PATHS
+    ))
+    if not args.answer_yes:
+        yn = askYN("Continue?")
+        if not yn:
+            sys.exit(0)
+    idx_filter = "'git rm -r -q --cached --ignore-unmatch %s'" % rmp_quoted
+    with in_directory(args.dest_repo):
+        os.system("git filter-branch --index-filter %s --prune-empty -- --all" % idx_filter)
+
+
+def reclaim_repo_space(args):
+    logging.info("reclaiming space in '%s'", args.dest_repo)
+    with in_directory(args.dest_repo):
+        s0 = get_cwd_size()
+        logging.info("Size of repo before cleanup: %s", s0)
+        orefs = '.git/refs/original'
+        if os.path.isdir(orefs):
+            logging.info("removing backup refs")
+            subprocess.call(['rm', '-r', '-f', orefs])
+        subprocess.call("git reflog expire --expire=now --all".split())
+        subprocess.call("git gc --aggressive --prune=now".split())
+        s1 = get_cwd_size()
+        logging.info("Size of repo after cleanup: %s", s1)
+
+
+def main():
+    import argparse
+    parser = argparse.ArgumentParser(
+        description="clone and filter a git repo",
+        version='%%(prog)s %s' % VERSION
+    )
+    parser.add_argument(
+        '-s', '--source-repo',
+        required=True,
+        help='The source repo'
+    )
+    parser.add_argument(
+        '-d', '--dest-repo',
+        required=True,
+        help='The (new) destination repo'
+    )
+    parser.add_argument(
+        '-f', '--filter-dir',
+        required=True,
+        help='The top-level directory from the source repo to use'
+    )
+    parser.add_argument(
+        '-i', '--include-paths-file',
+        help='The file that contains a list of paths to include'
+    )
+    parser.add_argument(
+        '-b', '--base-branch',
+        help='The base branch name to use for generating deletes'
+    )
+    parser.add_argument(
+        '-r', '--reprocess',
+        action='store_true',
+        default=False,
+        help='If specified, reprocess the DEST-REPO'
+    )
+    parser.add_argument(
+        '--answer-yes',
+        action='store_true',
+        default=False,
+        help='If included, automatically answer yes to all yes/no questions'
+    )
+    parser.add_argument(
+        '--skip-tree-filter',
+        action='store_true',
+        default=False,
+        help='If included, do not apply the tree filter to the DEST-REPO'
+    )
+
+    args = parser.parse_args()
+    configure_logging(args)
+    check_args(args)
+    if not args.reprocess:
+        prep_new_repo(args)
+        apply_subdirectory_filter(args)
+    if not args.skip_tree_filter:
+        generate_tree_filter(args)
+        apply_tree_filter(args)
+    reclaim_repo_space(args)
+
+
+if __name__ == '__main__':
+    main()
