@@ -7,10 +7,14 @@ VERSION='001-20160525'
 SRC_REPO=''
 FILTER_DIR=''
 DEST_REPO_PATH=''
+INCLUDE_PATHS_FILE=''
 declare -a INCLUDE_PATHS
 declare -a RM_PATHS
+declare -a RM_PATHS_QUOTED
 READ_IP_FROM_STDIN=0
 REPROCESS=0
+SKIP_TREE_FILTER=0
+BASE_BRANCH=''
 
 
 function log {
@@ -18,6 +22,22 @@ function log {
     >&2 echo "$msg"
 }
 
+function askYN {
+    msg=$1
+	RESPONSE='x'
+
+	until $(echo $RESPONSE | grep -q -E '[yYnN]')
+	do
+		read -p "$msg [y|n]: " RESPONSE
+	done
+	
+	if [ "$RESPONSE" = "y" -o "$RESPONSE" = "Y" ]
+	then
+		echo "1"
+	else
+		echo "0"
+	fi
+}
 
 function apply_subdirectory_filter {
     log "removing everything from '$DEST_REPO_PATH' except '$FILTER_DIR'"
@@ -38,15 +58,26 @@ function apply_tree_filter {
 	else
 		log "removing the following from '$DEST_REPO_PATH'"
 	fi
-    pushd $DEST_REPO_PATH
     for rp in "${RM_PATHS[@]}"
     do
         log "-- $rp"
     done
-    git filter-branch --tree-filter \
-        "rm -rf ${RM_PATHS[*]}" \
-        -- --all
-    popd
+
+	ans=$(askYN "Do you wish to continue?")
+	if [ "$ans" = "1" ]
+	then
+		log "Performing filter operation"
+		pushd $DEST_REPO_PATH
+		git filter-branch --index-filter \
+			"git rm -r -q --cached --ignore-unmatch ${RM_PATHS[*]}" \
+			--prune-empty -- --all
+		# git filter-branch --tree-filter \
+		#     "rm -rf ${RM_PATHS[*]}" \
+		#     -- --all
+		popd
+	else
+		log "Skipping filter operation"
+	fi
 }
 
 # Return T if PATH is a child of INCLUDE_PATHS or if
@@ -92,13 +123,20 @@ function does_path_start_with_removes {
 #   Any path that is wholly contained on one of the INCLUDE_PATHS
 #   Any path that that starts with one of the paths already marked for deletion
 # This function populates the RM_PATHS array
-# It checks every branch and to check for deletes
+# It checks every branch and to check for deletes unless BASE_BRANCH is specified
 function generate_tree_filter {
     pushd $DEST_REPO_PATH
-    for b in $(git branch)
+	if [ -z "$BASE_BRANCH" ]
+	then
+		branches=$(git branch)
+	else
+		branches="$BASE_BRANCH"
+	fi
+
+    for b in $branches
     do 
         log "generate_tree_filter: computing deletes for branch '$b'"
-        git checkout -f "$b"
+        git checkout -q -f "$b"
 
         for p in $(find . -path ./.git -prune -o -print)
         do
@@ -116,7 +154,7 @@ function generate_tree_filter {
             then
                 continue
             fi
-            RM_PATHS+=("$p")
+			RM_PATHS[${#RM_PATHS[*]}]="$p"
         done
     done
     popd
@@ -175,13 +213,12 @@ Arguments:
   -s SRC-REPO 
   -f FILTER-DIR 
   -d DEST-REPO-PATH
+  -i INCLUDE_PATHS_FILE
+  -b | --base-branch  BASE_BRANCH
   -r | --reprocess (no args, optional)
+  --skip-tree-filter (no args, optional)
   -h | --help print help and exit
 
-  Any additional values passed in on the command line 
-  will be used to populate INCLUDE_PATHS.  If the
-  special value '--' is passed in, then INCLUDE_PATHS
-  will be read from STDIN.
 
   The -r (--reprocess) arg may be used *after* the new output
   repository has been created.  The effect of doing this is just
@@ -192,15 +229,21 @@ Arguments:
   Basically just rerun the exact same command with the same args,
   just add "-r" or "--reprocess".
 
+  The --skip-tree-filter arg may be used if you want to preserve
+  all of the contents of the FILTER-DIR.
 
-Read INCLUDE_PATHS from stdin:
+  The -b (--base-branch) may be used if you wish to compute the
+  paths to delete solely on the state of the BASE_BRANCH that
+  you specify, instead of having the script iterate through every
+  branch and do the computation.
+
+The INCLUDE_PATHS_FILE should conform to the following:
+
 
 - one path per line.  
 - each path should start with a top-level child of
   FILTER-DIR and should start with "./".  No trailing
-  slashes on directory paths.
-- Only those paths read from stdin will be included in
-  the final results.
+  slashes or '*' any paths.
 
 Example:
 
@@ -221,14 +264,15 @@ With INCLUDE_PATHS specified in the file "zm-versioncheck-store.paths".
 And with a copy of the "zcs-full" repo checked out locally (with all
 branches included):
 
-cat zm-versioncheck-store.paths | ./clone-and-filter-repo -s zcs-full -d zm-versioncheck-store -f ZimbraAdminVersionCheck --
+./clone-and-filter-repo -s zcs-full -d zm-versioncheck-store -f ZimbraAdminVersionCheck \
+  -i zm-versioncheck-store.paths
 
 EOF
     exit 1
 }
 
 function check_args {
-    for ra in SRC_REPO FILTER_DIR DEST_REPO_PATH
+    for ra in SRC_REPO FILTER_DIR DEST_REPO_PATH INCLUDE_PATHS_FILE
     do
         if [ -z "${!ra}" ]
         then
@@ -237,12 +281,27 @@ function check_args {
             exit 1
         fi
     done
-    if [ ${#INCLUDE_PATHS[@]} -eq 0 ]
+	if [ ! -f ${INCLUDE_PATHS_FILE} ]
+	then
+		log "Error: must specify valid INCLUDE_PATHS_FILE (-i option)"
+		exit 1
+	fi
+    if [ ${SKIP_TREE_FILTER} -eq 0 -a  ${#INCLUDE_PATHS[@]} -eq 0 ]
     then
         log "Error: you must specify one or more INCLUDE_PATHS"
         log "For help run '$0 --help'"
         exit 1
     fi
+	if [ ${REPROCESS} -eq 0 -a -d "${DEST_REPO_PATH}" ]
+	then
+		log "Error: the destination '${DEST_REPO_PATH}' already exists.  Did you mean to reprocess?"
+		exit 1
+	fi
+	if [ ${REPROCESS} -eq 1 -a ! -d "${DEST_REPO_PATH}" ]
+	then
+		log "Error: you asked to reprocess the output, but '${DEST_REPO_PATH}' does not exist"
+		exit 1
+	fi
 }
 
 while [[ $# > 0 ]]
@@ -256,48 +315,64 @@ do
         FILTER_DIR="$2"
         shift
         ;;
+        -i)
+        INCLUDE_PATHS_FILE="$2"
+        shift
+        ;;
         -d)
         DEST_REPO_PATH="$2"
+        shift
+        ;;
+        -b|--base-branch)
+		BASE_BRANCH="$2"
         shift
         ;;
         -r|--reprocess)
         REPROCESS=1
         ;;
+        --skip-tree-filter)
+        SKIP_TREE_FILTER==1
+        ;;
         -h|--help)
         usage
         ;;
         *)
-        if [ "$1" == "--" ]
-        then
-            READ_IP_FROM_STDIN=1
-        else
-            INCLUDE_PATHS+=("$1")
-        fi
+		usage
         ;;
     esac
     shift
 done
 
-if [ $READ_IP_FROM_STDIN -eq 1 ]
+
+if [ -f $INCLUDE_PATHS_FILE ]
 then
-    while read -r line
-    do
-        INCLUDE_PATHS+=("$line")
-    done
+	while IFS= read -r line; do
+		INCLUDE_PATHS[${#INCLUDE_PATHS[*]}]="$line"
+    done < $INCLUDE_PATHS_FILE
 fi
 
 check_args
+
 
 log "These are the parameters that I parsed:"
 log "- SRC_REPO='$SRC_REPO'"
 log "- FILTER_DIR='$FILTER_DIR'"
 log "- DEST_REPO_PATH='$DEST_REPO_PATH'"
+log "- BASE_BRANCH='$BASE_BRANCH'"
 log "- REPROCESS='$REPROCESS'"
+log "- SKIP_TREE_FILTER='$SKIP_TREE_FILTER'"
+log "- INCLUDE_PATHS_FILE='$INCLUDE_PATHS_FILE'"
 log "- INCLUDE_PATHS:"
 for ip in "${INCLUDE_PATHS[@]}"
 do
     log "-- $ip"
 done
+
+ans=$(askYN "continue?")
+if [ "$ans" = "0" ]
+then
+	exit 0
+fi
 
 if [ $REPROCESS -eq 0 ]
 then
@@ -305,7 +380,13 @@ then
 	apply_subdirectory_filter
 fi
 
-generate_tree_filter
-apply_tree_filter
+if [ $SKIP_TREE_FILTER -eq 0 ]
+then
+	generate_tree_filter
+	apply_tree_filter
+else
+	log "Skipping tree filter operations"
+fi
+
 reclaim_repo_space
 
