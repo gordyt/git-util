@@ -42,7 +42,7 @@ Three things to note:
 
 Here is the command:
 
-	./clone-and-filter-repo -s zcs-full -d zm-timezones -i zm-timezones.paths
+	./clone-and-filter-repo -s zcs-full -d zm-timezones -i zm-timezones.paths -b judaspriest-870
 
 
 The tree-filter will take a *long* time to run. It has to remove a long list of paths from each of the 147163 commits.
