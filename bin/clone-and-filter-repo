@@ -275,7 +275,12 @@ def main():
     )
     parser.add_argument(
         '-b', '--base-branch',
-        help='The base branch name to use for generating deletes'
+        help=(
+            'The base branch name to use for generating deletes. ' +
+            'If not included then the program will check out ' +
+            'every branch and update the deletes based on each of ' +
+            'those branches.  This takes longer.'
+        )
     )
     parser.add_argument(
         '-r', '--reprocess',
