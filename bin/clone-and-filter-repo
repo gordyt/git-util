@@ -65,13 +65,33 @@ def check_args(args):
             args.dest_repo
         )
         sys.exit(1)
+    logging.info("Parsed these arguments:")
+    logging.info("--source-repo: %s", args.source_repo)
+    logging.info("--dest-repo: %s", args.dest_repo)
+    logging.info("--filter-dir: %s", args.filter_dir)
+    logging.info("--base-branch: %s", args.base_branch)
+    logging.info("--reprocess: %s", args.reprocess)
+    logging.info("--answer-yes: %s", args.answer_yes)
+    logging.info("--include-paths-file: %s", args.include_paths_file)
+    if INCLUDE_PATHS:
+        for ip in INCLUDE_PATHS:
+            logging.info("> %s", ip)
+    if not args.answer_yes:
+        yn = askYN("Continue?")
+        if not yn:
+            sys.exit(0)
 
 
 def configure_logging(args):
-    logging.basicConfig(
-        format='[%(asctime)s][%(levelname)s] %(message)s',
-        level=logging.INFO
-    )
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    formatter = logging.Formatter('[%(asctime)s][%(levelname)s] %(message)s')
+    fh = logging.FileHandler('%s.log' % os.path.basename(__file__))
+    fh.setFormatter(formatter)
+    sh = logging.StreamHandler()
+    sh.setFormatter(formatter)
+    logger.addHandler(fh)
+    logger.addHandler(sh)
 
 
 def prep_new_repo(args):
