@@ -22,10 +22,6 @@ The crucial difference to keep in mind between action #2 and action #3 is the fo
 
 Examples will follow.
 
-
-
-
-
 ## docs
 
 
@@ -39,3 +35,17 @@ Examples will follow.
 1. Some of the operations described in the procedures below can take a very long time to run.  If you have available RAM on your machine, creating a RAM disk upon which to store your output repositories temporarily can help.
 2. If the list of files and directories to filter out of the new repository is excessively long, then the `--tree-filter` operation can take a *really* long time.  In those cases it may be better to broaden the list of files/folders to include and then manually delete the extra ones that remain in the output repo after the operation has completed.  When I tested with the `zm-timezones` repository, there sere **814** paths that had to be (potentially) removed from *every* commit in the output repo.
 3. If you do not require full history with branch labels in the new repo, then when you create your local clone repository (as the source), do not pull in every branch from stash, just the current main branch (or branches) that you need.
+
+## tutorials
+
+Tutorials will be maintained in separate repositories as they may depend on having a specific organization of branches, etc., to facilitate proper execution of the tutorial.
+
+### rebase-merge-feature
+
+This tutorial will walk you through the essential actions needed to manipulate the structure of your git repository.  This will be especially important as teams transition to following [recommended git best practices](http://nvie.com/posts/a-successful-git-branching-model/).
+
+Start by cloning the tutorial to your local drive, then following the instructions in the README.
+
+	git clone git@gitlab.com:gordyt/rebase-merge-feature.git
+
+
