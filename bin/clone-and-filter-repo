@@ -193,6 +193,10 @@ def generate_tree_filter(args):
                 ['git', 'checkout', '-q', '-f', b],
                 stderr=DEVNULL
             )
+            subprocess.call(
+                ['git', 'clean', '-d', '-f'],
+                stderr=DEVNULL
+            )
             for p in filter(
                 lambda p: p and p != '.',
                 map(
