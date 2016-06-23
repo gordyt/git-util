@@ -6,7 +6,7 @@ import os
 import subprocess
 import sys
 
-VERSION = "0.1"
+VERSION = "0.2"
 INCLUDE_PATHS = None
 RM_PATHS = None
 DEVNULL = open(os.devnull, 'w')
@@ -38,6 +38,9 @@ def get_cwd_size():
 
 def check_args(args):
     global INCLUDE_PATHS
+    if not args.source_repo and not args.reprocess:
+        logging.warn("--source-repo is required unless --reprocess specified")
+        sys.exit(1)
     if not args.include_paths_file:
         logging.warn("No --include-paths-file so tree-filter will be applied")
     if not args.filter_dir:
@@ -254,7 +257,6 @@ def main():
     )
     parser.add_argument(
         '-s', '--source-repo',
-        required=True,
         help='The source repo'
     )
     parser.add_argument(
