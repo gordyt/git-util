@@ -18,6 +18,8 @@ A couple of things to note:
 
 For this example we will make use of the [clone-and-filter-repo](../bin/clone-and-filter-repo) script to do the heavy lifting.
 
+
+
 ## Setup
 
 The instructions that follow assume you have a local copy of the `zcs-full` repository, with all branches replicated to it (assuming you want history from all branches).
