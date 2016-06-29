@@ -6,7 +6,7 @@ import os
 import subprocess
 import sys
 
-VERSION = "0.2"
+VERSION = "0.3"
 INCLUDE_PATHS = None
 RM_PATHS = None
 DEVNULL = open(os.devnull, 'w')
@@ -236,6 +236,10 @@ def apply_tree_filter(args):
 
 def reclaim_repo_space(args):
     logging.info("reclaiming space in '%s'", args.dest_repo)
+    if not args.answer_yes:
+        yn = askYN("Continue?")
+        if not yn:
+            sys.exit(0)
     with in_directory(args.dest_repo):
         s0 = get_cwd_size()
         logging.info("Size of repo before cleanup: %s", s0)
