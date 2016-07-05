@@ -50,4 +50,13 @@ Start by cloning the tutorial to your local drive, then following the instructio
 
 	git clone git@gitlab.com:gordyt/rebase-merge-feature.git
 
+Or, if you don't have credentials registered with GitLab
+
+    git clone https://gitlab.com/gordyt/rebase-merge-feature.git
+
+Then prepare the repo by pulling down all of the remote branches:
+
+    cd rebase-merge-feature
+    for b in $(git branch --remotes --no-color | grep --invert-match 'master'); do git checkout -f --track "$b"; done
+    git checkout master
 
