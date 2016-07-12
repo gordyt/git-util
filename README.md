@@ -28,6 +28,7 @@ Examples will follow.
 - [creating-stash-repo](docs/creating-stash-repo.md) - instructions for creating a new repository in stash.
 - [creating-ram-disk](docs/creating-ram-disk.md) - basic instructions for creating a RAM disk as a working area for reposity operations.  This is especially handy if you are performing your work from a system that has conventional drives but plenty of RAM.
 - [managing-build-dependencies](docs/managing-build-dependencies.md) - guidelines for managing build dependencies in the new git component-focused repositories
+- [rearranging-commits](docs/rearranging-commits.md) - how to fix commit histories, in painful detail
 - [stash-repos](docs/stash-repos.md) - the list of master repositories in stash from which all of the component-focused repositories are based.
 - [walkthrough-full-history](docs/walkthrough-full-history.md) - a walkthrough of the process required to create a component-focused repository with full history, including branch labels. This document shows how to do everything "by hand," without the assistance of the `clone-and-filter-repo` script.
 - [walkthrough-multiple-folders](docs/walkthrough-multiple-folders.md) - a walkthrough of the entire process for creating a component-focused repo based off of multiple top-level source directories.
