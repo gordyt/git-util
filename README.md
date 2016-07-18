@@ -4,6 +4,13 @@ The purpose of this repository is to provide information and tools for working w
 
 ## bin
 
+[analyze-repo](bin/analyze-repo)
+
+This is a bash script that will identify the largest files in a local git repo.  Credits:
+
+- [Steve Lorek](http://stevelorek.com/how-to-shrink-a-git-repository.html)
+- [Anthony Stubbs](https://stubbisms.wordpress.com/2009/07/10/git-script-to-show-largest-pack-objects-and-trim-your-waist-line/)
+
 [clone-and-filter-repo](bin/clone-and-filter-repo)
 
 This has been rewritten in Python for better performance and also to make it more flexible.  It can now handle creating a new component-focused repository that is based off of one *or more* top-level directories, typically based off one of the following:
