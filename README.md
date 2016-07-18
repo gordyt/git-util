@@ -40,6 +40,7 @@ Examples will follow.
 - [walkthrough-full-history](docs/walkthrough-full-history.md) - a walkthrough of the process required to create a component-focused repository with full history, including branch labels. This document shows how to do everything "by hand," without the assistance of the `clone-and-filter-repo` script.
 - [walkthrough-multiple-folders](docs/walkthrough-multiple-folders.md) - a walkthrough of the entire process for creating a component-focused repo based off of multiple top-level source directories.
 - [walkthrough-multiple-split](docs/walkthrough-multiple-split.md) - a different method for creating a new repo based off of multiple top-level source directories.
+- [walkthrough-shrink-repo](docs/walkthrough-shrink-repo.md) - Walkdown of steps taking to trim unnecessary files from a git repository.
 
 ## additional notes about filtering repositories
 
