@@ -29,6 +29,12 @@ The crucial difference to keep in mind between action #2 and action #3 is the fo
 
 Examples will follow.
 
+- [.gitconfig](config/DOT.gitconfig) - This is a sample Git configuration file.  
+  - To *install* it, just copy this file to `$HOME/.gitconfig`.  
+  - After doing so be sure to edit the file and add your actual name and email address.  
+  - Look in particular at the `[alias]` section.  
+  - To use any of the aliases, just enter `git <alias>` from the command-line; e.g., `git lola`. 
+
 ## docs
 
 
