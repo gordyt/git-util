@@ -6,8 +6,9 @@ import os
 import subprocess
 import sys
 
-VERSION = "0.3"
+VERSION = "0.4"
 INCLUDE_PATHS = None
+REMOVE_PATHS = None
 RM_PATHS = None
 DEVNULL = open(os.devnull, 'w')
 
@@ -37,7 +38,7 @@ def get_cwd_size():
 
 
 def check_args(args):
-    global INCLUDE_PATHS
+    global INCLUDE_PATHS, REMOVE_PATHS
     if not args.source_repo and not args.reprocess:
         logging.warn("--source-repo is required unless --reprocess specified")
         sys.exit(1)
@@ -53,8 +54,19 @@ def check_args(args):
                 file(args.include_paths_file).read().split('\n')
             )
         )
+    if args.remove_paths_file and os.path.isfile(args.remove_paths_file):
+        REMOVE_PATHS = filter(
+            lambda p: p,
+            map(
+                lambda p: p.strip(),
+                file(args.remove_paths_file).read().split('\n')
+            )
+        )
     if args.include_paths_file and not INCLUDE_PATHS:
         logging.warn("Invalid or empty --include-paths-file")
+        sys.exit(1)
+    if args.remove_paths_file and not REMOVE_PATHS:
+        logging.warn("Invalid or empty --remove-paths-file")
         sys.exit(1)
     if args.reprocess and not os.path.isdir(args.dest_repo):
         logging.warn(
@@ -73,11 +85,16 @@ def check_args(args):
     logging.info("--dest-repo: %s", args.dest_repo)
     logging.info("--filter-dir: %s", args.filter_dir)
     logging.info("--base-branch: %s", args.base_branch)
+    logging.info("--refilter: %s", args.refilter)
     logging.info("--reprocess: %s", args.reprocess)
     logging.info("--answer-yes: %s", args.answer_yes)
     logging.info("--include-paths-file: %s", args.include_paths_file)
     if INCLUDE_PATHS:
         for ip in INCLUDE_PATHS:
+            logging.info("> %s", ip)
+    logging.info("--remove-paths-file: %s", args.remove_paths_file)
+    if REMOVE_PATHS:
+        for ip in REMOVE_PATHS:
             logging.info("> %s", ip)
     if not args.answer_yes:
         yn = askYN("Continue?")
@@ -133,9 +150,10 @@ def prep_new_repo(args):
 
 def is_included_path(p):
     global INCLUDE_PATHS
-    for ip in INCLUDE_PATHS:
-        if p.startswith(ip) or ip.startswith(p):
-            return True
+    if INCLUDE_PATHS:
+        for ip in INCLUDE_PATHS:
+            if p.startswith(ip) or ip.startswith(p):
+                return True
     return False
 
 
@@ -176,7 +194,7 @@ def apply_subdirectory_filter(args):
 
 def generate_tree_filter(args):
     global RM_PATHS
-    RM_PATHS = []
+    RM_PATHS = [] if RM_PATHS is None else RM_PATHS
     with in_directory(args.dest_repo):
         if args.base_branch:
             branches = [args.base_branch]
@@ -211,6 +229,19 @@ def generate_tree_filter(args):
             ):
                 if (not is_included_path(p)) and (not is_path_removed(p)):
                     bisect.insort(RM_PATHS, p)
+
+
+def update_tree_filter(args):
+    global REMOVE_PATHS, RM_PATHS
+    RM_PATHS = [] if RM_PATHS is None else RM_PATHS
+    for p in REMOVE_PATHS:
+        if (not is_included_path(p)) and (not is_path_removed(p)):
+            bisect.insort(RM_PATHS, p)
+
+
+def apply_refilter(args):
+    with in_directory(args.dest_repo):
+        os.system("git filter-branch")
 
 
 def apply_tree_filter(args):
@@ -284,12 +315,33 @@ def main():
         )
     )
     parser.add_argument(
+        '--remove-paths-file',
+        help=(
+            'The file that contains a list of additional paths to ' +
+            'remove.  If the --include-paths-file was also specified, ' +
+            'these paths will be appended to it.  Be sure and specify ' +
+            'one entry per line, using relative path notation; e.g., ' +
+            './path1'
+        )
+    )
+    parser.add_argument(
         '-b', '--base-branch',
         help=(
             'The base branch name to use for generating deletes. ' +
             'If not included then the program will check out ' +
             'every branch and update the deletes based on each of ' +
             'those branches.  This takes longer.'
+        )
+    )
+    parser.add_argument(
+        '--refilter',
+        action='store_true',
+        default=False,
+        help=(
+            'If specified, run a `git filter-branch` with no ' +
+            'arguments in the destination repo.  This can be used ' +
+            'to repair `duplicate parent` error messages. ' +
+            'This option requires -r and -d options.'
         )
     )
     parser.add_argument(
@@ -314,7 +366,12 @@ def main():
             apply_subdirectory_filter(args)
     if INCLUDE_PATHS:
         generate_tree_filter(args)
+    if REMOVE_PATHS:
+        update_tree_filter(args)
+    if RM_PATHS:
         apply_tree_filter(args)
+    if args.refilter:
+        apply_refilter(args)
     reclaim_repo_space(args)
 
 
