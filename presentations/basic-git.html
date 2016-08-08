@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Basic Git</title>
+    <meta charset="utf-8">
+    <style>
+      @import url(https://fonts.googleapis.com/css?family=Yanone+Kaffeesatz);
+      @import url(https://fonts.googleapis.com/css?family=Droid+Serif:400,700,400italic);
+      @import url(https://fonts.googleapis.com/css?family=Ubuntu+Mono:400,700,400italic);
+
+      body { font-family: 'Droid Serif'; }
+      h1, h2, h3 {
+        font-family: 'Yanone Kaffeesatz';
+        font-weight: normal;
+      }
+      .remark-code, .remark-inline-code { font-family: 'Ubuntu Mono'; }
+    </style>
+  </head>
+  <body>
+    <textarea id="source">
+
+class: center, middle
+
+# Basic Git
+
+---
+
+# Agenda
+
+1. Introduction
+2. Setup
+3. Concepts
+4. Workflow
+5. Questions/References
+
+---
+
+# Introduction
+
+- Git History
+- Git vs Perforce
+
+---
+
+# Introduction -> Git History
+
+- 2002 - Linux kernel project using BitKeeper
+- 2005 - BitKeeper started to charge Linux team to use BK
+- Linus Torvalds (with help) developed Git
+
+
+---
+
+# Introduction -> Git vs Perforce
+
+*Git* | *Perforce*
+---- | ----
+distributed | centralized
+free | commercial
+fast branching | slow branching
+light-weight branching | branches via new directories/copies
+
+---
+
+
+# Setup
+
+- Installation
+- Basic Config
+
+---
+
+# Setup -> Installation
+
+- Mac OS X
+  - *XCode* or *OSX Command line tools* (`xcode-select --install`)
+  - *Homebrew*
+- Windows
+  - https://git-scm.com/download
+  - Others?
+- Linux
+  - `sudo apt-get install git-all`
+  - `sudo yum install git-all`
+- Various GUI clients
+  
+---
+# Setup -> Basic Config
+
+- Global vs Local
+- `$HOME/.gitconfig`
+- Per-repo override
+
+---
+
+# Concepts
+
+- Remotes
+- Staging/Commits
+- Branches/Tags
+- What's in a repo?
+
+---
+
+# Concepts -> Remotes
+
+- Convenient shortcuts or bookmarks to work with different repo copies
+- Common Protocols
+  - Local: `/usr/local/foo` or `file:///usr/local/foo`
+  - HTTP: `https://example.com/gitproject.git`
+  - SSH: `ssh://user@server/project.git`
+  - Git: `git://HOST/ foo`
+
+---
+
+# Concepts -> Remotes -> Git Protocol
+
+### Run the server
+	
+	# In repo dir:
+	$ touch git-daemon-export-ok
+	# Notes:
+	# - Runs on port 9418 by default
+	# - alias this to 'serve' so you don't have to type so much
+	$ daemon --verbose --export-all --base-path=.git --reuseaddr --strict-paths .git/
+	
+### Clone the repo
+
+	$ git clone git://localhost/ my-repo
+
+---
+
+# Concepts -> Staging/Commits
+
+File can be in any of the following state
+
+- untracked
+- tracked
+  - unmodified
+  - modified
+  - staged (added, removed, moved)
+
+---
+
+# Concepts -> Branches/Tags
+
+- *tags*
+  - names for a specific revision
+  - do not move
+  - `refs/tags/`
+- *branches*
+  - lines of development
+  - advanced with new commits
+  - `refs/heads`
+- *remote-tracking branches*
+  - `refs/remotes/<remote>`
+  - follows regular branches in remote `<remote>`
+
+---
+# Concepts -> What's in a repo?
+
+**Item** | **Description**
+---- | ----
+`COMMIT_EDITMSG` | Your last commit message
+`FETCH_HEAD` | Tracks what has been fetched from a remote
+`HEAD` | Currently-checked-out branch
+`ORIG_HEAD` | previous state of `HEAD`
+`config` | Repo-specific config (overrides global)
+`description` | Used by `GitWeb` program
+`hooks/` | allows customization of various git commands
+`index` | staging info
+`info/` | additional info about the repo
+`logs/` | Git reflog 
+`objects/` | Git database (blobs, trees, commits)
+`packed-refs` | Packed refs to reduce total file count
+`refs/` | Pointers to commit object (tips of branches and tags)
+
+---
+
+# Workflow
+
+- Forking / Cloning / Remotes
+- Branching / Working
+- Pull Requests
+- Rebasing / Merging
+
+---
+
+# Questions/References
+
+- [git-util](https://stash.corp.synacor.com/projects/ZIMBRA/repos/git-util/browse)
+- [Official Reference](https://git-scm.com/docs)
+- [Pro Git Online Book](https://git-scm.com/book/en/v2)
+- [Git Magic Online Book](http://www-cs-students.stanford.edu/~blynn/gitmagic/)
+
+---
+
+    </textarea>
+    <script src="https://gnab.github.io/remark/downloads/remark-latest.min.js">
+    </script>
+    <script>
+      var slideshow = remark.create();
+    </script>
+  </body>
+</html>

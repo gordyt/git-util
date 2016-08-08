@@ -56,7 +56,11 @@ Examples will follow.
 2. If the list of files and directories to filter out of the new repository is excessively long, then the `--tree-filter` operation can take a *really* long time.  In those cases it may be better to broaden the list of files/folders to include and then manually delete the extra ones that remain in the output repo after the operation has completed.  When I tested with the `zm-timezones` repository, there sere **814** paths that had to be (potentially) removed from *every* commit in the output repo.
 3. If you do not require full history with branch labels in the new repo, then when you create your local clone repository (as the source), do not pull in every branch from stash, just the current main branch (or branches) that you need.
 
-## tutorials
+## presentations
+
+- [Basic Git](presentations/basic-git.html)
+
+## hands-on tutorials
 
 Tutorials will be maintained in separate repositories as they may depend on having a specific organization of branches, etc., to facilitate proper execution of the tutorial.
 
