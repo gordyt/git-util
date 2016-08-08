@@ -6,7 +6,7 @@ import os
 import subprocess
 import sys
 
-VERSION = "0.4"
+VERSION = "0.4.1"
 INCLUDE_PATHS = None
 REMOVE_PATHS = None
 RM_PATHS = None
@@ -249,7 +249,7 @@ def apply_tree_filter(args):
     if not RM_PATHS:
         logging.info("No remove paths computed.  Skipping tree-filter")
         return
-    logging.info("Removing the following paths from all branches:")
+    logging.info("Removing the following paths from all commits:")
     for rp in RM_PATHS:
         logging.info("> %s", rp)
     rmp_quoted = " ".join(map(
