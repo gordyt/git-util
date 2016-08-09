@@ -27,4 +27,4 @@
     # Show files ignored by git:
     ign = ls-files -o -i --exclude-standard
 	log-tree = log --graph --pretty='format:%d%x09%h (%an) %s%n' --all
-
+	serve = daemon --verbose --export-all --base-path=.git --reuseaddr --strict-paths .git/
