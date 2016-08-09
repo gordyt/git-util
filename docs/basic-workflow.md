@@ -317,7 +317,7 @@ If any conflicts occur, you resolve as follows for each file that exhibits a con
 
 In our example there was a conflict in the `ivysettings.xml` file.
 
-- I edited the file and reserved the conflict.
+- I edited the file and resolved the conflict.
 - Then `git add ivysettings.xml`.
 - Then `git rebase --continue`.
 
