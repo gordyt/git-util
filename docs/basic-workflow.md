@@ -100,7 +100,7 @@ In any command that refers to a specific commit, you can use the full hash, the 
 
 A couple of additional observations:
 
-- Remote branch labels are always comprised of two parts `REMOTE-LABEL:BRANCH-NAME`
+- Remote branch labels are always comprised of two parts `REMOTE-LABEL/BRANCH-NAME`
 - Local branch labels are always just a single value `BRANCH-NAME`
 - They may be an arbitrarily large number of branch labels (and tags) associated with any commit.
 
