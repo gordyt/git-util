@@ -1,0 +1,75 @@
+#!/bin/bash
+# Does a best-effort to let you know which commits are in one branch
+# and not in another. The only requirement is that, at some point
+# in time in the repo history, the two branches must have a common
+# commit.
+# 
+# This is useful in the case where you might have rebased one
+# or both of the branches and you want to see what you
+# might need to pull in
+
+function usage {
+	echo "$0 <branch-1> <branch-2>"
+	exit 1
+}
+
+function commits_in_range {
+	base_commit=$1
+	end_commit=$2
+	log_file=$3
+	git log --decorate --pretty='format: %h [%an %aI] %s' --abbrev-commit ${base_commit}..${end_commit} > $log_file
+}
+
+function get_base_commit {
+	branch_1=$1
+	branch_2=$2
+	echo $(git merge-base $branch_1 $branch_2)
+}
+
+
+function print_missing_commits {
+	br_1=$1
+	lg_1=$2
+	br_2=$3
+	lg_2=$4
+	echo "********************************************************************************"
+	echo "Commits in $br_1 that are not in $br_2:"
+	echo "********************************************************************************"
+
+	while read line
+	do
+		search_line=$(echo -n "$line" | cut -d ' ' -f 3-)
+		grep -q -F "$search_line" $lg_2 || echo $line
+
+	done < <(cat $lg_1)
+}
+
+if [ $# -lt 2 ]
+then
+  	usage
+fi
+
+branch_1=$1
+log_1=$(tempfile)
+
+branch_2=$2
+log_2=$(tempfile)
+
+base_commit=`get_base_commit $branch_1 $branch_2`
+if [ "$base_commit" == "" ]
+then
+    exit 1
+fi
+commits_in_range $base_commit $branch_1 $log_1
+commits_in_range $base_commit $branch_2 $log_2
+
+print_missing_commits $branch_1 $log_1 $branch_2 $log_2
+print_missing_commits $branch_2 $log_2 $branch_1 $log_1
+
+rm $log_1
+rm $log_2
+
+
+
+
+
