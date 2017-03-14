@@ -8,6 +8,8 @@
 # or both of the branches and you want to see what you
 # might need to pull in
 
+base_commit=""
+
 function usage {
 	echo "$0 <branch-1> <branch-2>"
 	exit 1
@@ -34,6 +36,7 @@ function print_missing_commits {
 	lg_2=$4
 	echo "********************************************************************************"
 	echo "Commits in $br_1 that are not in $br_2:"
+	echo "Base-Commit: $base_commit"
 	echo "********************************************************************************"
 
 	while read line
