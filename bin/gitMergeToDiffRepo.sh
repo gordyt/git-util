@@ -7,23 +7,25 @@ sc_name=`basename $0`
 usage_error ()
 {
     cat >&2 <<EOF
-usage : $sc_name -F fromCommit -T toCommit [-r sourc-repo] [-d target-dir] [-t target-branch] [-u upstream remote]
+usage : $sc_name -F fromCommit -T toCommit [-r sourc-repo] [-d target-dir] [-t target-branch] [-u upstream remote] [-f]
     -r default value:${repo}
     -t default value:${targetBranch}
     -d default value:${targetDir}
     -u default value:${upstreamRemote}
+    -f default FALSE (not flat)
 EOF
     exit 1
 }
 
 upstreamRemote="origin"
 targetBranch="dev"
-repo="zm-common"
-targetDir="common"
+repo=unset
+targetDir=unset
 tmpBranch="newTree42"
 fromRev=unset
 toRev=unset
-while getopts F:T:r:t:u:d: CurrOpt
+flat=0
+while getopts F:T:r:t:u:d:f CurrOpt
 do
     case $CurrOpt in
     F)        fromRev="$OPTARG";;
@@ -32,6 +34,7 @@ do
     t)        targetbranch="$OPTARG";;
     d)        targetDir="$OPTARG";;
     u)        upstreamRemote="$OPTARG";;
+    f)        flat=1;;
     ?)        usage_error;;
     esac
 done
@@ -75,5 +78,11 @@ then
     echo "Problem creating work branch ${targetBranch}"
     exit 1
 fi
-(set -x;git merge --no-edit --no-ff ${tmpBranch})
-(set -x;git commit --amend --author="$author" -F ${commitMsgFile})
+
+if [ "$flat" == "0" ]
+then
+	(set -x;git merge --no-edit --no-ff ${tmpBranch})
+	(set -x;git commit --amend --author="$author" -F ${commitMsgFile})
+else
+	(set -x;git merge ${tmpBranch})
+fi
