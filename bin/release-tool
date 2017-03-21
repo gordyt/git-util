@@ -1,0 +1,82 @@
+#!/usr/bin/env python
+import stashy
+import json
+
+def list_open_pulls(args):
+    print "Loading repo list from", args.repo_list_file
+    json_file = open(args.repo_list_file)
+    repo_list = json.load(json_file)
+    stash_url = "https://{}:{}/".format(args.git_host,args.stash_port)
+    print "Connecting to ", stash_url
+    stash = stashy.connect(stash_url, args.git_user, args.git_password, verify=False)
+    ref = "refs/heads/{}".format(args.target_branch)
+    print "Checking repos for open pull requests to", args.target_branch
+    dirty_repos = [];
+    for repo_name in repo_list:
+        pulls = list(stash.projects[args.stash_project].repos[repo_name].pull_requests.all(at=ref, state='OPEN'))
+        if len(pulls) == 0:
+            print repo_name, "is clear"
+        else:
+            print repo_name, "has open pull requests to", args.target_branch
+            for pr in pulls:
+                dirty_repos.append({"name":repo_name, "author":pr['author']})
+
+    if len(dirty_repos) > 0:
+        print "Found repos with open pull requests"
+        for dp in dirty_repos:
+            print dp["name"], " has pull requests by", dp['author']['user']['displayName'], dp['author']['user']['emailAddress']
+    else:
+        print "All repos are clear. Did not find any open pull requests to", args.target_branch
+
+
+def main():
+    import argparse
+    print "release tool"
+    parser = argparse.ArgumentParser(
+        description="clone and filter a git repo"
+    )
+    parser.add_argument(
+        '-t', '--target-branch',
+        help='Release integration branch',
+        required=True,
+    )
+    parser.add_argument(
+        '-u', '--git-user',
+        help='Stash/git login',
+        required=True,
+    )
+    parser.add_argument(
+        '-w', '--git-password',
+        help='Stash/git password',
+        required=True,
+    )
+    parser.add_argument(
+        '-g', '--git-host',
+        default='stash.corp.synacor.com',
+        help='Stash URL. Default: stash.corp.synacor.com'
+    )
+    parser.add_argument(
+        '-p', '--stash-port',
+        default=443,
+        help='Stash REST API port. Default: 443. Note: this is not your git port'
+    )
+    parser.add_argument(
+        '-r', '--stash-project',
+        default='ZIMBRA',
+        help='Stash project. Default: ZIMBRA'
+    )
+    parser.add_argument(
+        '-f', '--repo-list-file',
+        default='repo-list.json',
+        help='JSON file with list of repos to check'
+    )
+    parser.add_argument(
+        '-a', '--action',
+        default='list-pulls',
+        help='Action. Default is list-pulls, which lists open pull requests'
+    )
+    args = parser.parse_args()
+    list_open_pulls(args)
+
+if __name__ == '__main__':
+    main()
