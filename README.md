@@ -35,9 +35,10 @@ Examples will follow.
   - Look in particular at the `[alias]` section.  
   - To use any of the aliases, just enter `git <alias>` from the command-line; e.g., `git lola`. 
 
- [release-tool]
+[release-tool](bin/release-tool)
 
- Python script for release owner/captain/manager to help with git tasks. Requires [stashy](https://github.com/RisingOak/stashy/)
+ Python script for release owner/captain/manager to help with git tasks.
+ Requires [stashy](https://github.com/RisingOak/stashy/)
 
 ## docs
 
