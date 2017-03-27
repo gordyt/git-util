@@ -59,6 +59,7 @@ Examples will follow.
 ## presentations
 
 - [Basic Git](presentations/basic-git.html)
+- [git-flow sync-up (PDF)](presentations/git-flow_sync-up.pdf)
 
 ## hands-on tutorials
 
