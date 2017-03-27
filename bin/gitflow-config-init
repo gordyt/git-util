@@ -1,0 +1,77 @@
+#!/bin/bash
+# Initialize gitflow-avg configuration options.
+# 
+# Run this script on a new machine after you have set-up git and your 
+# $HOME/.gitconfig file. 
+
+FILE_OPTION='--global'
+ADD_OPTION=''
+
+function usage {
+    echo $0 [-a] [-l] [-h]
+
+    echo "-a - Use 'git config --add option value' instead of 'git config option value'."
+    echo "     This will not override any option values you have previously set."
+    echo "-l - Use 'git config --local' instead of 'git config --global."
+    echo "-h - Print this help message and exit."
+
+    exit 1
+}
+
+function set_config {
+    key=$1
+    val=$2
+    git config $FILE_OPTION $ADD_OPTION "gitflow.${key}" "${val}"
+}
+
+function set_options {
+    # git flow init options
+    set_config prefix.feature    "feature/"
+    set_config prefix.bugfix     "bugfix/"
+    set_config prefix.release    "release/"
+    set_config prefix.hotfix     "hotfix/"
+    set_config prefix.support    "support/"
+    set_config prefix.versiontag "rel-"
+    set_config init.defaults true
+
+    # git flow feature options
+    set_config feature.start.fetch true
+
+    set_config feature.finish.fetch true
+    set_config feature.finish.preserve-merges true
+    set_config feature.finish.rebase true
+
+    set_config feature.rebase.interactive true
+    set_config feature.rebase.preserve-merges true
+
+    # git flow bugfix options
+    set_config bugfix.start.fetch true
+    set_config bugfix.finish.preserve-merges true
+    set_config bugfix.finish.rebase true
+
+    # git flow release options
+    set_config release.finish.fetch true
+    set_config release.finish.ff-master false
+    set_config release.finish.pushtag true
+    set_config release.finish.pushdevelop true
+    set_config release.finish.pushproduction true
+
+    # git flow hotfix options
+    set_config hotfix.start.fetch true
+    set_config hotfix.finish.fetch true
+    set_config hotfix.finish.push true
+}
+
+while getopts :ahl FLAG
+do
+    case "$FLAG" in
+        a) ADD_OPTION="--add"
+        ;;
+        l) FILE_OPTION="--local"
+        ;;
+        *) usage
+        ;;
+    esac
+done
+
+set_options
