@@ -42,6 +42,7 @@ Examples will follow.
 - [creating-stash-repo](docs/creating-stash-repo.md) - instructions for creating a new repository in stash.
 - [creating-ram-disk](docs/creating-ram-disk.md) - basic instructions for creating a RAM disk as a working area for reposity operations.  This is especially handy if you are performing your work from a system that has conventional drives but plenty of RAM.
 - [getting-started](docs/getting-started.md) - Setting up your local git environment
+- [git-flow getting started](docs/git-flow-getting-started.md) - Getting started with git-flow.
 - [managing-build-dependencies](docs/managing-build-dependencies.md) - guidelines for managing build dependencies in the new git component-focused repositories
 - [rearranging-commits](docs/rearranging-commits.md) - how to fix commit histories, in painful detail
 - [stash-repos](docs/stash-repos.md) - the list of master repositories in stash from which all of the component-focused repositories are based.
