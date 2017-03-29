@@ -35,31 +35,29 @@ function set_options {
     set_config init.defaults true
 
     # git flow feature options
-    set_config feature.start.fetch true
-
     set_config feature.finish.fetch true
     set_config feature.finish.preserve-merges true
     set_config feature.finish.rebase true
-
     set_config feature.rebase.interactive true
     set_config feature.rebase.preserve-merges true
+    set_config feature.start.fetch true
 
     # git flow bugfix options
-    set_config bugfix.start.fetch true
     set_config bugfix.finish.preserve-merges true
     set_config bugfix.finish.rebase true
+    set_config bugfix.start.fetch true
 
     # git flow release options
     set_config release.finish.fetch true
     set_config release.finish.ff-master false
-    set_config release.finish.pushtag true
     set_config release.finish.pushdevelop true
     set_config release.finish.pushproduction true
+    set_config release.finish.pushtag true
 
     # git flow hotfix options
-    set_config hotfix.start.fetch true
     set_config hotfix.finish.fetch true
     set_config hotfix.finish.push true
+    set_config hotfix.start.fetch true
 }
 
 while getopts :ahl FLAG
