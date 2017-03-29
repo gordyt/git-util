@@ -1,9 +1,10 @@
 #!/bin/bash
-# Initialize gitflow-avg configuration options.
+# Initialize gitflow-avh configuration options.
 # 
 # Run this script on a new machine after you have set-up git and your 
 # $HOME/.gitconfig file. 
 
+VERSION=1
 FILE_OPTION='--global'
 ADD_OPTION=''
 
@@ -14,6 +15,8 @@ function usage {
     echo "     This will not override any option values you have previously set."
     echo "-l - Use 'git config --local' instead of 'git config --global."
     echo "-h - Print this help message and exit."
+	echo ""
+	echo "default-config-version: $VERSION"
 
     exit 1
 }
@@ -33,9 +36,12 @@ function set_options {
     set_config prefix.support    "support/"
     set_config prefix.versiontag "rel-"
     set_config init.defaults true
+    set_config default-config-version "$VERSION"
 
     # git flow feature options
     set_config feature.finish.fetch true
+    set_config feature.finish.keeplocal false
+    set_config feature.finish.keepremote false
     set_config feature.finish.preserve-merges true
     set_config feature.finish.rebase true
     set_config feature.rebase.interactive true
@@ -43,20 +49,32 @@ function set_options {
     set_config feature.start.fetch true
 
     # git flow bugfix options
-    set_config bugfix.finish.preserve-merges true
+    set_config bugfix.finish.fetch true
+    set_config bugfix.finish.keeplocal false
+    set_config bugfix.finish.keepremote false
+    set_config bugfix.finish.preserve-merges false
     set_config bugfix.finish.rebase true
+    set_config bugfix.rebase.interactive true
+    set_config bugfix.rebase.preserve-merges false
     set_config bugfix.start.fetch true
 
     # git flow release options
     set_config release.finish.fetch true
     set_config release.finish.ff-master false
+    set_config release.finish.keeplocal false
+    set_config release.finish.keepremote false
     set_config release.finish.pushdevelop true
     set_config release.finish.pushproduction true
     set_config release.finish.pushtag true
+    set_config release.finish.squash false
+    set_config release.start.fetch true
 
     # git flow hotfix options
     set_config hotfix.finish.fetch true
+    set_config hotfix.finish.keeplocal false
+    set_config hotfix.finish.keepremote false
     set_config hotfix.finish.push true
+    set_config hotfix.finish.squash false
     set_config hotfix.start.fetch true
 }
 
