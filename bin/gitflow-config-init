@@ -4,7 +4,8 @@
 # Run this script on a new machine after you have set-up git and your 
 # $HOME/.gitconfig file. 
 
-VERSION=1
+# This should be bumped any time we change or add an option
+VERSION=2
 FILE_OPTION='--global'
 ADD_OPTION=''
 
@@ -52,10 +53,8 @@ function set_options {
     set_config bugfix.finish.fetch true
     set_config bugfix.finish.keeplocal false
     set_config bugfix.finish.keepremote false
-    set_config bugfix.finish.preserve-merges false
     set_config bugfix.finish.rebase true
     set_config bugfix.rebase.interactive true
-    set_config bugfix.rebase.preserve-merges false
     set_config bugfix.start.fetch true
 
     # git flow release options
