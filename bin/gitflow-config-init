@@ -1,7 +1,9 @@
 #!/bin/bash
 # Initialize gitflow-avh configuration options.
+# NOTE: All of these default options for any given command may be overridden
+#       via command-line options if needed.
 # 
-# Run this script on a new machine after you have set-up git and your 
+# Run this script on a new machine after you have setup git and your 
 # $HOME/.gitconfig file. 
 
 # This should be bumped any time we change or add an option
@@ -29,51 +31,143 @@ function set_config {
 }
 
 function set_options {
+	# ------------------------------------------------------------------------
     # git flow init options
+	#
+	# These define the naming conventions used for the different types of
+	# branches.
+	# ------------------------------------------------------------------------
     set_config prefix.feature    "feature/"
     set_config prefix.bugfix     "bugfix/"
     set_config prefix.release    "release/"
     set_config prefix.hotfix     "hotfix/"
     set_config prefix.support    "support/"
     set_config prefix.versiontag "rel-"
+	# The `git flow init` command will use defaults defined above.
     set_config init.defaults true
+	# This is just for us to use so that a developer may easily check to see
+	# if they have the current defaults version installed.
     set_config default-config-version "$VERSION"
 
+	# ------------------------------------------------------------------------
     # git flow feature options
+	#
+	# Feature branches (usually) have a longer life-span than bugfix branches
+	# and they tend to contain series of commits from multiple tickets, so
+	# for rebases, we preserve merge commits by default.  This behavior may
+	# be overridden via the --nopreserve-merges option.
+	#
+	# Feature branches are normally based on the HEAD of the `develop`
+	# branch.
+	# ------------------------------------------------------------------------
+	# Fetch from `origin` before finishing the feature.
     set_config feature.finish.fetch true
+	# Delete local feature branch after the feature is finished.
     set_config feature.finish.keeplocal false
+	# Delete remote feature branch (on `origin`) after the feature is finished.
     set_config feature.finish.keepremote false
+	# Preserve merge commits by default when finishing a feature.
     set_config feature.finish.preserve-merges true
+    # Rebase feature branch on <base> (def=`develop`) before finishing.
     set_config feature.finish.rebase true
+	# Perform an interactive rebase of the feature branch by default when
+	# rebasing. This gives the developer a change to squash, fixup, rename,
+	# and discard commits as needed during the rebase.
     set_config feature.rebase.interactive true
+	# Preserve merge commits by default when doing a `git flow feature rebase`.
     set_config feature.rebase.preserve-merges true
+	# Fetch from `origin` before starting a feature branch.  This will ensure
+	# the feature is based on current repository state when initially created.
     set_config feature.start.fetch true
 
+	# ------------------------------------------------------------------------
     # git flow bugfix options
+	#
+	# Bugfix branches (usually) have a shorter life-span than feature branches
+	# and they tend to contain one-or-more commits that get grouped when
+	# pushed to `origin`, so for rebases, the default behavior was to not try
+	# and preserve intermediate merge commits.  Have updated in Version 2
+	# to try and preserve intermediate merge commits by default.
+	# This default behavior may be overridden via the --nopreserve-merges
+	# option.
+	#
+	# Bugfix branches are normally based on the HEAD of the `develop` branch.
+	# ------------------------------------------------------------------------
+	# Fetch from `origin` before finishing the bugfix.
     set_config bugfix.finish.fetch true
+	# Delete the local bugfix branch after bugfix is finished.
     set_config bugfix.finish.keeplocal false
+	# Delete the remote bugfix branch (on `origin`) after bugfix is finished.
     set_config bugfix.finish.keepremote false
+	# [Changed in Version 2]
+ 	# Preserve merge commits by default when finishing a feature.
+    set_config bugfix.finish.preserve-merges true
+	# Rebase the bugfix branch on <base> (def=`develop`) before finishing.
     set_config bugfix.finish.rebase true
+	# Perform an interactive rebase of the bugfix branch by default when
+	# rebasing. This gives the developer a change to squash, fixup, rename,
+	# and discard commits as needed during the rebase.
     set_config bugfix.rebase.interactive true
+	# [Changed in Version 2]
+	# Preserve merge commits by default when doing a `git flow bugfix rebase`.
+    set_config bugfix.rebase.preserve-merges true
+	# Fetch from `origin` before starting a bugfix branch.  This will ensure
+	# the bugfix is based on current repository state when initially created.
     set_config bugfix.start.fetch true
 
+	# ------------------------------------------------------------------------
     # git flow release options
+	#
+	# These options apply to commands that interact with release (a.k.a.,
+	# "release integration") branches. They are normally based on the current
+	# HEAD of the `develop` branch.
+	# ------------------------------------------------------------------------
+	# Fetch from `origin` before finishing a release.
     set_config release.finish.fetch true
+	# Do not just fast-forward the `master` branch when finishing the
+	# release.  This will cause a merge commit to be created which will allow
+	# all of the bugfix and release metadata commits made during release
+	# certification to be clearly delineated.
     set_config release.finish.ff-master false
+	# Delete the local release branch after the release is finished.
     set_config release.finish.keeplocal false
+	# Delete the remote release branch (on `origin`) when the release is
+	# finished.
     set_config release.finish.keepremote false
+	# Push the `develop` branch (to `origin`) after the release is finished.
     set_config release.finish.pushdevelop true
+	# Push the `master` branch (to `origin`) after the release is finished.
     set_config release.finish.pushproduction true
+	# Push the tag (to `origin`) after the release is finished.
     set_config release.finish.pushtag true
+	# Do not squash all of the commits made to the release branch into
+	# a single commit when the release is finished.
     set_config release.finish.squash false
+	# Fetch from `origin` before starting a release branch. This will ensure
+	# the release is based on the current repository state (of the `develop`
+	# branch) when initially created.
     set_config release.start.fetch true
 
+	# ------------------------------------------------------------------------
     # git flow hotfix options
+	#
+	# These options apply to hotfix branches, which are normally based on
+	# the HEAD of the `master` branch.
+	# ------------------------------------------------------------------------
+	# Fetch from `origin` before finishing a hotfix.
     set_config hotfix.finish.fetch true
+	# Delete the local hotfix branch after the hotfix is finished.
     set_config hotfix.finish.keeplocal false
+	# Delete the remote hotfix branch (on `origin`) after the hotfix is finished.
     set_config hotfix.finish.keepremote false
+	# Push the hotfix branch to `origin` when the hotfix is finished.
     set_config hotfix.finish.push true
+	# Do not squash all of the commits made to the hotfix branch into a single
+	# commit when the hotfix is finished.
     set_config hotfix.finish.squash false
+	# Fetch from `origin` before starting a hotfix branch. This will ensure
+	# the hotfix is based on the current repository state when initially
+	# created.
     set_config hotfix.start.fetch true
 }
 
