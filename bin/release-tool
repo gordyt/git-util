@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 import stashy
 import json
+import os
+import subprocess
 
 def list_open_pulls(args):
     print "Loading repo list from", args.repo_list_file
@@ -13,7 +15,8 @@ def list_open_pulls(args):
     ref = "refs/heads/{}".format(args.target_branch)
     print "Checking repos for open pull requests to", args.target_branch
     dirty_repos = [];
-    for repo_name in repo_list:
+    for repo_obj in repo_list:
+        repo_name = repo_obj.name
         pulls = list(stash.projects[args.stash_project].repos[repo_name].pull_requests.all(at=ref, state='OPEN'))
         if len(pulls) == 0:
             print repo_name, "is clear"
@@ -29,27 +32,84 @@ def list_open_pulls(args):
     else:
         print "All repos are clear. Did not find any open pull requests to", args.target_branch
 
+def do_move(args):
+    print "Moving current branches from origin to", args.dest_remote_name, "/", args.dest_branch_name
+    json_file = open(args.repo_list_file)
+    repo_list = json.load(json_file)
+    cur_dir = os.getcwd()
+    top_dir = os.path.dirname(cur_dir)
+    for repo_obj in repo_list:
+        repo_name = repo_obj["name"]
+        repo_dir = os.path.join(top_dir,repo_name)
+        os.chdir(repo_dir)
+        print "Working in ", repo_dir
+        command = 'git branch -m {branch}'.format(branch=args.dest_branch_name)
+        subprocess.check_call(command, stderr=subprocess.STDOUT, shell=True)
+        command = 'git push {remote} {branch}'.format(remote=args.dest_remote_name, branch=args.dest_branch_name)
+        subprocess.check_call(command, stderr=subprocess.STDOUT, shell=True)
+
+def add_remote(args):
+    print "Adding remote", args.dest_remote_url, "with name", args.dest_remote_name
+    json_file = open(args.repo_list_file)
+    repo_list = json.load(json_file)
+    cur_dir = os.getcwd()
+    top_dir = os.path.dirname(cur_dir)
+    for repo_obj in repo_list:
+        repo_name = repo_obj["name"]
+        repo_dir = os.path.join(top_dir,repo_name)
+        os.chdir(repo_dir)
+        print "Working in ", repo_dir
+        for remote in subprocess.check_output(['git','remote']).split('\n'):
+            if remote == args.dest_remote_name:
+                print "deleting remote", remote
+                command = 'git remote remove {name}'.format(name=remote)
+                subprocess.check_call(command, stderr=subprocess.STDOUT, shell=True)
+
+        print "adding remote",args.dest_remote_name
+        remote_url = args.dest_remote_url + repo_name + ".git"
+        command = 'git remote add {name} {url}'.format(name=args.dest_remote_name, url=remote_url)
+        subprocess.check_call(command, stderr=subprocess.STDOUT, shell=True)
+
+    os.chdir(cur_dir)
+
+def move_branch(args):
+    clone_repos(args)
+    add_remote(args)
+    do_move(args)
+
+def clone_repos(args):
+    print "Cloning repos from", args.source_remote_url
+    json_file = open(args.repo_list_file)
+    repo_list = json.load(json_file)
+    cur_dir = os.getcwd()
+    os.chdir(os.path.dirname(cur_dir))
+    for repo_obj in repo_list:
+        repo_name = repo_obj["name"]
+        url = args.source_remote_url + repo_name + ".git"
+        command = 'git clone -b {branch} {url}'.format(branch=repo_obj["branch"], url=url)
+        subprocess.check_call(command, stderr=subprocess.STDOUT, shell=True)
+
+    os.chdir(cur_dir)
 
 def main():
     import argparse
-    print "release tool"
     parser = argparse.ArgumentParser(
         description="Release management tools"
     )
     parser.add_argument(
         '-t', '--target-branch',
         help='Release integration branch',
-        required=True,
+        required=False,
     )
     parser.add_argument(
         '-u', '--git-user',
         help='Stash/git login',
-        required=True,
+        required=False,
     )
     parser.add_argument(
         '-w', '--git-password',
         help='Stash/git password',
-        required=True,
+        required=False,
     )
     parser.add_argument(
         '-g', '--git-host',
@@ -68,7 +128,7 @@ def main():
     )
     parser.add_argument(
         '-f', '--repo-list-file',
-        default='repo-list.json',
+        default='../zm-build/instructions/FOSS_repo_list.json',
         help='JSON file with list of repos to check'
     )
     parser.add_argument(
@@ -76,9 +136,35 @@ def main():
         default='list-pulls',
         help='Action. Default is list-pulls, which lists open pull requests'
     )
+    parser.add_argument(
+        '-sru', '--source-remote-url',
+        help='Stash or Git base URL',
+        required=False,
+    )
+    parser.add_argument(
+        '-dru', '--dest-remote-url',
+        help='URL of destination git remote',
+        required=False,
+    )
+    parser.add_argument(
+        '-drn', '--dest-remote-name',
+        help='Name of destination git remote',
+        required=False,
+    )
+    parser.add_argument(
+        '-dbn', '--dest-branch-name',
+        help='Name of destination git branch',
+        required=False,
+    )
     args = parser.parse_args()
     if args.action == 'list-pulls':
         list_open_pulls(args)
+    elif args.action == 'add-remote':
+        add_remote(args)
+    elif args.action == 'clone-repos':
+        clone_repos(args)
+    elif args.action == 'move-branch':
+        move_branch(args)
     else:
         print "unknown action"
 
