@@ -32,6 +32,46 @@ def list_open_pulls(args):
     else:
         print "All repos are clear. Did not find any open pull requests to", args.target_branch
 
+def rename_remote_branch(args):
+    json_file = open(args.repo_list_file)
+    repo_list = json.load(json_file)
+    cur_dir = os.getcwd()
+    top_dir = os.path.dirname(cur_dir)
+    for repo_obj in repo_list:
+        os.chdir(top_dir)
+        repo_name = repo_obj["name"]
+        src_branch = repo_obj["branch"]
+        print "Renaming {repo}/{srcbranch} to {repo}/{dstbranch}".format(repo=repo_name,srcbranch=src_branch,dstbranch=args.dest_branch_name)
+        url = args.source_remote_url + repo_name + ".git"
+        print "cloning ",url
+        command = 'git clone {url}'.format(url=url)
+        subprocess.check_call(command, stderr=subprocess.STDOUT, shell=True)
+        print "looking for existing branch with name ",args.dest_branch_name
+        repo_dir = os.path.join(top_dir, repo_name)
+        os.chdir(repo_dir)
+        for line in subprocess.check_output(['git', 'branch']).split('\n'):
+            print line
+            b = line.replace("remotes/origin/","").replace("->","").replace("origin/","").strip("*").strip()
+            print "found branch",b
+            if b == args.dest_branch_name:
+                newname = b+"-old"
+                print "found branch wtih name",b,"will rename it to",newname
+                command = 'git branch -m {oldb} {newb}'.format(oldb=b,newb=newname)
+                subprocess.check_call(command, stderr=subprocess.STDOUT, shell=True)
+                command = 'git push -f origin {newb}'.format(newb=newname)
+                subprocess.check_call(command, stderr=subprocess.STDOUT, shell=True)
+                break
+            else:
+                print "Did not find branch",args.dest_branch_name
+
+        command = "git checkout {srcbranch}".format(srcbranch=src_branch)
+        subprocess.check_call(command, stderr=subprocess.STDOUT, shell=True)
+        print "Pushing {repo}/{srcbranch} to {dstbranch}".format(repo=repo_name,srcbranch=src_branch,dstbranch=args.dest_branch_name)
+        command = 'git branch -m {srcbranch} {dstbranch}'.format(srcbranch=src_branch,dstbranch=args.dest_branch_name)
+        subprocess.check_call(command, stderr=subprocess.STDOUT, shell=True)
+        command = 'git push -f origin {dstbranch}'.format(dstbranch=args.dest_branch_name)
+        subprocess.check_call(command, stderr=subprocess.STDOUT, shell=True)
+
 def do_move(args):
     print "Moving current branches from origin to", args.dest_remote_name, "/", args.dest_branch_name
     json_file = open(args.repo_list_file)
@@ -142,6 +182,11 @@ def main():
         required=False,
     )
     parser.add_argument(
+        '-sbn', '--source-branch-name',
+        help='Name of source git branch',
+        required=False,
+    )
+    parser.add_argument(
         '-dru', '--dest-remote-url',
         help='URL of destination git remote',
         required=False,
@@ -165,6 +210,8 @@ def main():
         clone_repos(args)
     elif args.action == 'move-branch':
         move_branch(args)
+    elif args.action == 'rename-remote-branch':
+        rename_remote_branch(args)
     else:
         print "unknown action"
 
