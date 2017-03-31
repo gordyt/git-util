@@ -118,6 +118,26 @@ def move_branch(args):
     add_remote(args)
     do_move(args)
 
+def tag_branch(args):
+    json_file = open(args.repo_list_file)
+    repo_list = json.load(json_file)
+    cur_dir = os.getcwd()
+    top_dir = os.path.dirname(cur_dir)
+    os.chdir(top_dir)
+    for repo_obj in repo_list:
+        repo_name = repo_obj["name"]
+        repo_dir = os.path.join(top_dir, repo_name)
+        remote_url = args.source_remote_url + repo_name + ".git"
+        print "working on",remote_url
+        command = 'git clone -b {branch} {url}'.format(branch=args.source_branch_name,url=remote_url)
+        subprocess.check_call(command, stderr=subprocess.STDOUT, shell=True)
+        os.chdir(repo_dir)
+        command = 'git tag {tag}'.format(tag=args.tag_name)
+        subprocess.check_call(command, stderr=subprocess.STDOUT, shell=True)
+        command = 'git push origin {branch} {tag}'.format(branch=args.source_branch_name,tag=args.tag_name)
+        subprocess.check_call(command, stderr=subprocess.STDOUT, shell=True)
+        os.chdir(top_dir)
+
 def clone_repos(args):
     print "Cloning repos from", args.source_remote_url
     json_file = open(args.repo_list_file)
@@ -222,6 +242,11 @@ def main():
         help='Name of output file',
         required=False,
     )
+    parser.add_argument(
+        '-tn', '--tag-name',
+        help='name of tag to add',
+        required=False,
+    )
     args = parser.parse_args()
     if args.action == 'list-pulls':
         list_open_pulls(args)
@@ -235,6 +260,8 @@ def main():
         rename_remote_branch(args)
     elif args.action == 'convert-repos':
         convert_repo_list_to_json(args)
+    elif args.action == 'tag-branch':
+        tag_branch(args)
     else:
         print "unknown action"
 
