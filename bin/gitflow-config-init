@@ -69,6 +69,8 @@ function set_options {
     set_config feature.finish.keepremote false
     # Preserve merge commits by default when finishing a feature.
     set_config feature.finish.preserve-merges true
+    # Push to origin after finishing the feature
+    set_config feature.finish.push true
     # Rebase feature branch on <base> (def=`develop`) before finishing.
     set_config feature.finish.rebase true
     # Perform an interactive rebase of the feature branch by default when
@@ -101,7 +103,7 @@ function set_options {
     # Delete the remote bugfix branch (on `origin`) after bugfix is finished.
     set_config bugfix.finish.keepremote false
     # [Changed in Version 2]
-    # Preserve merge commits by default when finishing a feature.
+    # Preserve merge commits by default when finishing a bugfix
     set_config bugfix.finish.preserve-merges true
     # Rebase the bugfix branch on <base> (def=`develop`) before finishing.
     set_config bugfix.finish.rebase true

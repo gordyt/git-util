@@ -223,6 +223,9 @@ The output:
     - bugfix branch 'bugfix/zms-123' has been locally deleted; it has been remotely deleted from 'origin'
     - You are now on branch 'feature/imap'
 
+**Note:** When you finish a bugfix branch, you must push your newly-updated local `develop` branch back to `origin` as follows:
+
+	git push origin develop
 
 ## Finishing a Feature
 
