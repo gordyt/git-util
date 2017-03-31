@@ -53,7 +53,7 @@ You will end up with the following branch/tag conventions established for the re
 	Release branch prefix: release/
 	Hotfix branch prefix: hotfix/
 	Support branch prefix: support/
-	Version tag prefix: version-
+	Version tag prefix:
 
 
 ## Branches in git-flow
@@ -277,5 +277,5 @@ When we have code freeze for a release, the following steps will occur:
 	1. It merges the _release integration_ branch back in to `master` and `develop`.
 	2. It tags the release (on `master`), using the following tag name:
 	
-			version-VERSION
+			VERSION
 

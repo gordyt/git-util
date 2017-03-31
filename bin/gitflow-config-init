@@ -42,8 +42,8 @@ function set_options {
     set_config prefix.release    "release/"
     set_config prefix.hotfix     "hotfix/"
     set_config prefix.support    "support/"
-    # [Changed in Version 2]
-    set_config prefix.versiontag "version-"
+    # [Changed in Version 3]
+    set_config prefix.versiontag ""
     # The `git flow init` command will use defaults defined above.
     set_config init.defaults true
     # This is just for us to use so that a developer may easily check to see
