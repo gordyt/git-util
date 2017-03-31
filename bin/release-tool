@@ -132,6 +132,7 @@ def clone_repos(args):
 
     os.chdir(cur_dir)
 
+
 def convert_repo_list_to_json(args):
     print "Converting",args.repo_list_file,"to",args.out_file
     pattern = r'([\s]+)(\{ name => )(")([a-z0-9\-\.]+)(")(,)([\s]+)(branch)( => )(["a-z0-9]+)(,)([\s]*)(\},)'
@@ -188,7 +189,7 @@ def main():
     )
     parser.add_argument(
         '-a', '--action',
-        default='list-pulls',
+        required=True,
         help='Action. Default is list-pulls, which lists open pull requests'
     )
     parser.add_argument(
