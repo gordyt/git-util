@@ -7,7 +7,7 @@
 # $HOME/.gitconfig file. 
 
 # This should be bumped any time we change or add an option
-VERSION=3
+VERSION=4
 FILE_OPTION='--global'
 ADD_OPTION=''
 
@@ -65,8 +65,10 @@ function set_options {
     set_config feature.finish.fetch true
     # Delete local feature branch after the feature is finished.
     set_config feature.finish.keeplocal false
-    # Delete remote feature branch (on `origin`) after the feature is finished.
-    set_config feature.finish.keepremote false
+    # Do NOT delete remote feature branch (on `origin`) after the feature is finished.
+    # This is to work-around a bug in gitflow.  Please delete your remote feature
+    # branch manually after it has been finished.
+    set_config feature.finish.keepremote true
     # Preserve merge commits by default when finishing a feature.
     set_config feature.finish.preserve-merges true
     # Push to origin after finishing the feature
@@ -100,8 +102,10 @@ function set_options {
     set_config bugfix.finish.fetch true
     # Delete the local bugfix branch after bugfix is finished.
     set_config bugfix.finish.keeplocal false
-    # Delete the remote bugfix branch (on `origin`) after bugfix is finished.
-    set_config bugfix.finish.keepremote false
+    # Do NOT delete remote bugfix branch (on `origin`) after the bugfix is finished.
+    # This is to work-around a bug in gitflow.  Please delete your remote bugfix
+    # branch manually after it has been finished.
+    set_config bugfix.finish.keepremote true
     # [Changed in Version 2]
     # Preserve merge commits by default when finishing a bugfix
     set_config bugfix.finish.preserve-merges true
