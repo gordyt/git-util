@@ -14,6 +14,11 @@ All references to _git-flow_ refer to the [gitflow-avh](https://github.com/peter
 
 After installing _git_ and _git-flow_, please download a copy of the `gitflow-config-init` script, located in the `bin` directory of this repo.  You can run it with a `-h` option to get some help.  But, basically, you will just want to run it with no options.  This will update your `$HOME/.gitconfig` file so that certain _git-flow_ commands will have the proper options switched on (or off) by default.  **This is important.** The examples that follow assume that you have performed this step.  You **must** perform this _initial configuration_ on each computer or VM from which you are interacting with our _git_ repositories.
 
+**Note:** This _initial configuration_ script may be updated over time.  The current version is `4`. To check what version you have installed:
+
+    $ git config --get gitflow.default-config-version
+    4
+
 ## Convenient Aliases
 
 The _git-flow_ commands are a bit verbose and you can save some typing by creating a few convenient aliases for working with them.  As an example:
@@ -223,9 +228,12 @@ The output:
     - bugfix branch 'bugfix/zms-123' has been locally deleted; it has been remotely deleted from 'origin'
     - You are now on branch 'feature/imap'
 
-**Note:** When you finish a bugfix branch, you must push your newly-updated local `<base>` branch back to `origin` as follows:
+**Note:** When you finish a bugfix (or feature) branch, you must complete the following steps to publish the `<base>` branch back to `origin` and remove your pull-request branch from `origin`
 
 	git push origin <base>
+	git push origin :bugfix/zms-123
+
+Obviously you woould adjust the above two commands as required for your situation!
 
 ## Finishing a Feature
 
@@ -238,6 +246,14 @@ So for our hypothetical "feature/imap" branch:
 	git flow feature imap finish
 
 The default options configured from the `gitflow-config-init` init script will take care of making sure that your feature branch has been properly rebased before merging into `develop`.  Finishing a bugfix branch based on `develop` works the same.
+
+**Note:** When you finish a feature (or bugfix)  branch, you must complete the following steps to publish the `<base>` branch back to `origin` and remove your pull-request branch from `origin`
+
+	git push origin <base>
+	git push origin :feature/imap
+
+Obviously you woould adjust the above two commands as required for your situation! So in the above example `<base>` is the `develop` branch.
+
 
 ## Working With Releases
 
