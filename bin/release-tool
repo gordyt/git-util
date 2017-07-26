@@ -179,7 +179,7 @@ def clone_repos(args):
 
 def convert_repo_list_to_json(args):
     print "Converting",args.repo_list_file,"to",args.out_file
-    pattern = r'([\s]+)(\{ name => )(")([a-z0-9\-\.]+)(")((,)([\s]+)(branch)( => )(["a-z0-9]+))?(,)([\s]*)(\},)'
+    pattern = r'([\s]+)(\{ name => )(")([a-z0-9\-\.]+)(")((,)([\s]+)(branch)( => )(["a-z0-9\-\.]+))?((,)([\s]+)(remote)( => )(["a-z0-9\-\.]+))?(,)([\s]*)(\},)'
     string = file(args.repo_list_file).read()
     matches = list(re.finditer(pattern, string, flags=0))
     target = open(args.out_file, 'w')
